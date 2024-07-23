@@ -1,0 +1,211 @@
+require("dotenv").config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const path = require('path');
+const cors = require('cors');
+const { sequelize, Usuario, Restaurante, Recolector, Notificacion, HistoricoRecoleccion, Solicitud, Calificacion, MensajeSolicitud } = require('index');
+
+const app = express();
+const port = process.env.PORT_SERVER || 8080;
+
+app.use(express.static(path.join(__dirname)));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'] }));
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.get('/inicioRestaurante', (req, res) => res.sendFile(path.join(__dirname, 'inicioRestaurante.html')));
+app.get('/inicioRecolector', (req, res) => res.sendFile(path.join(__dirname, 'inicioRecolector.html')));
+
+app.post('/login', async (req, res) => {
+  const { correo, contrasenia } = req.body;
+  try {
+    const usuario = await Usuario.findOne({ where: { correo, contrasenia } });
+
+    if (usuario) {
+      res.json({ message: 'Inicio de sesión exitoso', tipo_usuario: usuario.tipo_usuario });
+    } else {
+      res.status(401).send('Correo electrónico o contraseña incorrectos');
+    }
+  } catch (error) {
+    console.error('Error al iniciar sesión', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
+app.post('/registroRestaurante', async (req, res) => {
+  const { name_usuario, nombre, correo, contrasenia } = req.body;
+  try {
+    const usuario = await Usuario.create({ name_usuario, nombre, correo, contrasenia, tipo_usuario: 'restaurante' });
+    await Restaurante.create({ id_usuarios: usuario.id });
+    res.send('Usuario registrado correctamente');
+  } catch (error) {
+    console.error('Error al registrar usuario', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
+app.post('/registroRecolector', async (req, res) => {
+  const { name_usuario, nombre, correo, contrasenia } = req.body;
+  try {
+    const usuario = await Usuario.create({ name_usuario, nombre, correo, contrasenia, tipo_usuario: 'recolector' });
+    await Recolector.create({ id_usuarios: usuario.id });
+    res.send('Recolector registrado correctamente');
+  } catch (error) {
+    console.error('Error al registrar recolector', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
+app.get('/usuarios', async (req, res) => {
+  try {
+    const usuarios = await Usuario.findAll();
+    res.json(usuarios);
+  } catch (error) {
+    console.error('Error al obtener datos de usuarios', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
+app.listen(process.env.PORT_SERVER, function () {
+    console.log("Servidor en el puerto " + process.env.PORT_SERVER);
+  });
+
+
+
+
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Pool } = require('pg');
+const path = require('path');
+const cors = require('cors');
+
+const app = express();
+const port = 8080;
+
+// Middleware para servir archivos estáticos
+app.use(express.static(path.join(__dirname)));
+
+// Middleware para manejar datos del formulario
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+// Configuración del cliente de conexión a la base de datos
+const pool = new Pool({
+    host: 'localhost',
+    port: 5432,
+    user: 'postgres',
+    password: 'Delleve',
+    database: 'wastetracker'
+});
+
+pool.connect();
+
+const corsOptions = {
+    origin: '*', 
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'],
+};
+
+app.use(cors(corsOptions));
+
+// Ruta raíz, devuelve el archivo HTML principal
+app.get('/', function (req, res) {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.post('/login', async (req, res) => {
+    const { correo, contrasenia } = req.body;
+
+    try {
+        // Intentar primero con usuario tipo restaurante
+        let query = `SELECT * FROM usuario WHERE correo = $1 AND contrasenia = $2`;
+        let result = await pool.query(query, [correo, contrasenia]);
+
+        if (result.rows.length > 0) {
+            // Usuario restaurante autenticado correctamente
+            res.json({ message: 'Inicio de sesión exitoso', tipo_usuario: 'restaurante' });
+            return;
+        }
+
+        // Si no es un restaurante, intentar como recolector
+        query = `SELECT * FROM usuario WHERE correo = $1 AND contrasenia = $2`;
+        result = await client.query(query, [correo, contrasenia]);
+
+        if (result.rows.length > 0) {
+            // Usuario recolector autenticado correctamente
+            res.json({ message: 'Inicio de sesión exitoso', tipo_usuario: 'recolector' });
+            return;
+        }
+
+        // Ningún usuario encontrado con las credenciales proporcionadas
+        res.status(401).send('Correo electrónico o contraseña incorrectos');
+    } catch (error) {
+        console.error('Error al iniciar sesión', error);
+        res.status(500).send('Error interno del servidor');
+    }
+});
+
+// Ruta para la página de inicio del restaurante
+app.get('/inicioRestaurante', (req, res) => {
+    res.sendFile(path.join(__dirname, 'inicioRestaurante.html'));
+});
+
+// Ruta para la página de inicio del recolector
+app.get('/inicioRecolector', (req, res) => {
+    res.sendFile(path.join(__dirname, 'inicioRecolector.html'));
+});
+
+// Registro de restaurantes 
+app.post('/registroRestaurante', function(request, response) {
+    const { name_usuario, nombre, correo, contrasenia } = request.body;
+    const query = `INSERT INTO usuario (name_usuario, nombre, correo, contrasenia, tipo_usuario) VALUES ($1, $2, $3, $4, 'restaurante')`;
+    
+    pool.query(query, [name_usuario, nombre, correo, contrasenia])
+        .then(() => {
+            response.send('Usuario registrado correctamente');
+        })
+        .catch(error => {
+            console.error('Error al registrar usuario', error);
+            response.status(500).send('Error interno del servidor');
+        });
+});
+
+// Registro de recolectores
+app.post('/registroRecolector', (req, res) => {
+    const { name_usuario, nombre, correo, contrasenia, tipo_usuario } = req.body;
+    const query = `INSERT INTO usuario (name_usuario, nombre, correo, contrasenia, tipo_usuario) VALUES ($1, $2, $3, $4, 'recolector')`;
+
+    pool.query(query, [name_usuario, nombre, correo, contrasenia, tipo_usuario])
+        .then(() => {
+            res.send('Recolector registrado correctamente');
+        })
+        .catch(error => {
+            console.error('Error al registrar recolector', error);
+            res.status(500).send('Error interno del servidor');
+        });
+});
+
+//obtener usuarios
+app.get('/usuario', (req, res) => {
+    const query = 'SELECT * FROM usuario';
+    
+    pool.query(query)
+        .then(result => {
+            res.json(result.rows);
+        })
+        .catch(error => {
+            console.error('Error al obtener datos de usuarios', error);
+            res.status(500).send('Error interno del servidor');
+        });
+});
+
+
+app.listen(port, () => {
+    console.log(`Servidor corriendo en http://localhost:${port}`);
+});
+
+
+
+

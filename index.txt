@@ -1,0 +1,334 @@
+/*require("dotenv").config();
+const path = require('path');
+const express = require("express");
+const app = express();
+const bodyParser = require('body-parser');
+const cors = require('cors');
+app.use(express.json());
+
+const { Sequelize, DataTypes } = require("sequelize");
+
+const sequelize = new Sequelize({
+    dialect: "postgres",
+    host: process.env.POSTGRES_HOST,
+    username: process.env.POSTGRES_USERNAME,
+    password: process.env.POSTGRES_PASSWORD,
+    database: process.env.POSTGRES_DB,
+});
+
+async function connect() {
+    try {
+        await sequelize.authenticate();
+        console.log("Conectado a la BD.");
+    } catch (e) {
+        console.error("No se puede conectar a la BD.");
+        console.error(e);
+    }
+}
+
+connect();
+
+const Usuario = sequelize.define("usuarios", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    name_usuario: {
+        type: DataTypes.STRING(45),
+        null: false,
+    },
+    nombre: {
+        type: DataTypes.STRING(45),
+        null: false,
+    },
+    correo: {
+        type: DataTypes.STRING(45),
+        null: false,
+        unique: true,
+    },
+    contrasenia: {
+        type: DataTypes.STRING(45),
+        null: false,
+    },
+    tipo_usuario: {
+        type: DataTypes.STRING(45),
+        null: false,
+    },
+}, 
+{ timestamps: false });
+
+const Restaurante = sequelize.define("restaurantes", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    recolecciones_finalizadas: {
+        type: DataTypes.INTEGER,
+    },
+    id_usuarios: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Usuario,
+        key: 'id'
+        }
+    }
+}, 
+{ timestamps: false });
+
+const Recolector = sequelize.define("recolectores", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    recolecciones_finalizadas: {
+        type: DataTypes.INTEGER,
+    },
+    id_usuarios: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Usuario,
+        key: 'id'
+        }
+    }
+}, 
+{ timestamps: false });
+
+const Notificacion = sequelize.define("notificaciones", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    mensaje: {
+        type: DataTypes.STRING(45),
+    },
+    fecha: {
+        type: DataTypes.DATE,
+    },
+}, 
+{ timestamps: false });
+
+const HistorialRecoleccion = sequelize.define("historial_recolecciones", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    fecha_fin: {
+        type: DataTypes.DATE,
+        allowNull: false,
+    },
+    id_recolectores: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Recolector,
+        key: 'id'
+        }
+    },
+    id_restaurantes: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Restaurante,
+        key: 'id'
+        }
+    }
+}, 
+{ timestamps: false });
+
+const Solicitud = sequelize.define("solicitudes", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    bote_lleno: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+    },
+    direccion: {
+        type: DataTypes.STRING(45),
+        allowNull: false,
+    },
+    fecha: {
+        type: DataTypes.DATE,
+    },
+    hora: {
+        type: DataTypes.TIME,
+    },
+    id_restaurantes: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Restaurante,
+        key: 'id'
+        }
+    },
+    id_recolectores: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Recolector,
+        key: 'id'
+        }
+    }
+},
+{ timestamps: false });
+
+const Calificacion = sequelize.define("calificaciones", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    calificacion: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+    },
+    id_restaurantes: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Restaurante,
+        key: 'id'
+        }
+    },
+    id_recolectores: {
+        type: DataTypes.INTEGER,
+        references: {
+        model: Recolector,
+        key: 'id'
+        }
+    }
+}, 
+{ timestamps: false });
+
+const MensajeSolicitud = sequelize.define("mensajes_de_solicitud", {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+    },
+    mensaje: {
+        type: DataTypes.STRING(45),
+    },
+    fecha: {
+        type: DataTypes.DATE,
+    },
+}, 
+{ timestamps: false });
+
+// Definir asociaciones
+Usuario.hasOne(Restaurante, { foreignKey: 'id_usuarios' });
+Restaurante.belongsTo(Usuario, { foreignKey: 'id_usuarios' });
+
+Usuario.hasOne(Recolector, { foreignKey: 'id_usuarios' });
+Recolector.belongsTo(Usuario, { foreignKey: 'id_usuarios' });
+
+Restaurante.hasMany(HistorialRecoleccion, { foreignKey: 'id_restaurantes' });
+HistorialRecoleccion.belongsTo(Restaurante, { foreignKey: 'id_restaurantes' });
+
+Recolector.hasMany(HistorialRecoleccion, { foreignKey: 'id_recolectores' });
+HistorialRecoleccion.belongsTo(Recolector, { foreignKey: 'id_recolectores' });
+
+Restaurante.hasMany(Calificacion, { foreignKey: 'id_restaurantes' });
+Calificacion.belongsTo(Restaurante, { foreignKey: 'id_restaurantes' });
+
+Recolector.hasMany(Calificacion, { foreignKey: 'id_recolectores' });
+Calificacion.belongsTo(Recolector, { foreignKey: 'id_recolectores' });
+
+Restaurante.hasMany(Solicitud, { foreignKey: 'id_restaurantes' });
+Solicitud.belongsTo(Restaurante, { foreignKey: 'id_restaurantes' });
+
+Recolector.hasMany(Solicitud, { foreignKey: 'id_recolectores' });
+Solicitud.belongsTo(Recolector, { foreignKey: 'id_recolectores' });
+
+Recolector.hasMany(Notificacion, { foreignKey: 'id_recolectores' });
+Notificacion.belongsTo(Recolector, { foreignKey: 'id_recolectores' });
+
+// Sincronizar los modelos con la base de datos
+async function sync() {
+    try {
+        await sequelize.sync();
+        console.log("Base de datos inicializada.");
+    } catch (e) {
+        console.error("La BD no se puede actualizar.");
+        console.error(e);
+    }
+}
+
+sync();
+//module.exports = { sequelize, Usuario, Restaurante, Recolector, Notificacion, HistorialRecoleccion, Solicitud, Calificacion, MensajeSolicitud };
+
+
+app.get("/hola", function (req, res) {
+    res.send("Hola desde Express");
+});
+
+app.get("/goodbye", function (req, res) {
+    res.send("Goodbye desde Express");
+});
+
+////////////////////////////////////////////////
+app.use(express.static(path.join(__dirname)));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'] }));
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+app.get('/inicioRestaurante', (req, res) => res.sendFile(path.join(__dirname, 'inicioRestaurante.html')));
+app.get('/inicioRecolector', (req, res) => res.sendFile(path.join(__dirname, 'inicioRecolector.html')));
+
+app.post('/login', async (req, res) => {
+    const { correo, contrasenia } = req.body;
+    try {
+        const usuario = await Usuario.findOne({ where: { correo, contrasenia } });
+        if (usuario) {
+        res.json({ message: 'Inicio de sesión exitoso', tipo_usuario: usuario.tipo_usuario });
+        } else {
+            res.status(401).send('Correo electrónico o contraseña incorrectos');
+        }
+    } catch (error) {
+        console.error('Error al iniciar sesión', error);
+        res.status(500).send('Error interno del servidor');
+    }
+});
+
+app.post('/registroRestaurante', async (req, res) => {
+    const { name_usuario, nombre, correo, contrasenia } = req.body;
+    try {
+        const usuario = await Usuario.create({ name_usuario, nombre, correo, contrasenia, tipo_usuario: 'restaurante' });
+        await Restaurante.create({ id_usuarios: usuario.id });
+        res.send('Usuario registrado correctamente');
+    } catch (error) {
+        console.error('Error al registrar usuario', error);
+        res.status(500).send('Error interno del servidor');
+    }
+});
+
+app.post('/registroRecolector', async (req, res) => {
+    const { name_usuario, nombre, correo, contrasenia } = req.body;
+    try {
+        const usuario = await Usuario.create({ name_usuario, nombre, correo, contrasenia, tipo_usuario: 'recolector' });
+        await Recolector.create({ id_usuarios: usuario.id });
+        res.send('Recolector registrado correctamente');
+    } catch (error) {
+        console.error('Error al registrar recolector', error);
+        res.status(500).send('Error interno del servidor');
+    }
+});
+
+app.get('/usuarios', async (req, res) => {
+    try {
+        const usuarios = await Usuario.findAll();
+        res.json(usuarios);
+    } catch (error) {
+        console.error('Error al obtener datos de usuarios', error);
+        res.status(500).send('Error interno del servidor');
+    }
+});
+
+
+////////////////////////////////////////////////
+app.listen(process.env.PORT_SERVER, function () {
+    console.log("Servidor en el puerto " + process.env.PORT_SERVER);
+});*/
