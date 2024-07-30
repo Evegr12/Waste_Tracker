@@ -1,38 +1,55 @@
+require('dotenv').config();
+console.log('MYSQL_HOST:', process.env.MYSQL_HOST);
+console.log('MYSQL_USERNAME:', process.env.MYSQL_USERNAME);
+console.log('MYSQL_PASSWORD:', process.env.MYSQL_PASSWORD);
+console.log('MYSQL_DB:', process.env.MYSQL_DB);
+console.log('PORT:', process.env.PORT_SERVER);
+
 const express = require('express');
+const cors = require('cors');
 const multer = require('multer');
 const bodyParser = require('body-parser');
-const { Pool } = require('pg');
 const path = require('path');
-const cors = require('cors');
 const { Sequelize, DataTypes } = require('sequelize');
-
+const bcrypt = require('bcrypt');
 const app = express();
-const port = 8080;
 
+// Configuración de CORS
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+};
 // Middleware para servir archivos estáticos
 app.use(express.static(path.join(__dirname)));
-
 // Middleware para manejar datos del formulario
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.json());
+app.use(cors(corsOptions));
 const upload = multer();
 
-
-// Configuración del cliente de conexión a la base de datos
-const pool = new Pool({
-    host: 'localhost',
-    port: 5432,
-    user: 'postgres',
-    password: 'Delleve',
-    database: 'wastetracker'
+// Configuración del cliente de conexión a la base de datos con Sequelize
+const sequelize = new Sequelize({
+  dialect: "mysql",
+  host: process.env.MYSQL_HOST,
+  username: process.env.MYSQL_USERNAME,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DB
 });
 
-// Configuración de Sequelize
-const sequelize = new Sequelize('wastetracker', 'postgres', 'Delleve', {
-  host: 'localhost',
-  dialect: 'postgres'
-});
+async function connect() {
+  try {
+    await sequelize.authenticate();
+    console.log("Conectado a la BD.");
+  } catch (e) {
+    console.error("No se puede conectar a la BD.");
+    console.error(e);
+    process.exit(1); // Terminar el proceso si no se puede conectar
+  }
+}
+
+connect();
 
 const Usuario = sequelize.define('usuarios', {
   id: {
@@ -53,7 +70,7 @@ const Usuario = sequelize.define('usuarios', {
     allowNull: false
   },
   contrasenia: {
-    type: DataTypes.STRING(45),
+    type: DataTypes.STRING(80), // Asegúrate de que sea lo suficientemente largo para almacenar hashes
     allowNull: false
   },
   tipo_usuario: {
@@ -84,7 +101,7 @@ const Restaurante = sequelize.define('restaurantes', {
     allowNull: false
   },
   direccion: {
-    type: DataTypes.STRING(45),
+    type: DataTypes.STRING(150),
     allowNull: false
   }
 }, {
@@ -181,11 +198,11 @@ const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
 });
 
 // Relaciones
-Usuario.hasMany(Restaurante, { foreignKey: 'usuarios_id' });
 Restaurante.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+Usuario.hasOne(Restaurante, { foreignKey: 'usuarios_id' });
 
-Usuario.hasMany(Recolector, { foreignKey: 'usuarios_id' });
 Recolector.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+Usuario.hasOne(Recolector, { foreignKey: 'usuarios_id' });
 
 Restaurante.hasMany(Recoleccion, { foreignKey: 'restaurantes_id' });
 Recoleccion.belongsTo(Restaurante, { foreignKey: 'restaurantes_id' });
@@ -194,24 +211,21 @@ Recolector.hasMany(Recoleccion, { foreignKey: 'recolectores_id' });
 Recoleccion.belongsTo(Recolector, { foreignKey: 'recolectores_id' });
 
 // Sincronizar la base de datos
-sequelize.sync({ force: true })
-  .then(() => {
-    console.log('Tablas sincronizadas');
-  })
-  .catch(error => console.error('No se pudo sincronizar las tablas:', error));
+async function sync() {
+  try {
+    await sequelize.sync({ force: false }); // No eliminar las tablas en cada sincronización
+    console.log("Base de datos sincronizada.");
+  } catch (e) {
+    console.error("La BD no se pudo actualizar.");
+    console.error(e);
+  }
+}
 
-// Configuración de CORS
-const corsOptions = {
-    origin: '*', 
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
-};
-
-app.use(cors(corsOptions));
+sync();
 
 // Ruta raíz, devuelve el archivo HTML principal
 app.get('/', function (req, res) {
-    res.sendFile(path.join(__dirname, 'login.html'));
+  res.sendFile(path.join(__dirname, 'login.html'));
 });
 
 app.get('/inicioRestaurante', function (req, res) {
@@ -223,96 +237,99 @@ app.post('/login', async (req, res) => {
   const { correo, contrasenia } = req.body;
 
   try {
-      // Intentar primero con usuario tipo restaurante
-      let query = `SELECT * FROM usuarios WHERE correo = $1 AND contrasenia = $2`;
-      let result = await pool.query(query, [correo, contrasenia]);
+    let query = `SELECT * FROM usuarios WHERE correo = ?`;
+    let results = await sequelize.query(query, { replacements: [correo], type: sequelize.QueryTypes.SELECT });
 
-      if (result.rows.length > 0) {
-          const user = result.rows[0];
-          // Verifica el tipo de usuario (por ejemplo, por su id o rol)
-          if (user.tipo_usuario === 'restaurante') {
-              res.json({ tipo_usuario: 'restaurante' });
-          } else if (user.tipo_usuario === 'recolector') {
-              res.json({ tipo_usuario: 'recolector' });
-          } else {
-              res.status(401).send('Tipo de usuario no válido');
-          }
-          return;
+    if (results && results.length > 0) {
+      const user = results[0];
+      const match = await bcrypt.compare(contrasenia, user.contrasenia);
+      if (!match) {
+        return res.status(401).send('Correo electrónico o contraseña incorrectos');
       }
-
-      // Ningún usuario encontrado con las credenciales proporcionadas
+      
+      if (user.tipo_usuario === 'restaurante') {
+        res.json({ tipo_usuario: 'restaurante' });
+      } else if (user.tipo_usuario === 'recolector') {
+        res.json({ tipo_usuario: 'recolector' });
+      } else {
+        res.status(401).send('Tipo de usuario no válido');
+      }
+    } else {
       res.status(401).send('Correo electrónico o contraseña incorrectos');
+    }
   } catch (error) {
-      console.error('Error al iniciar sesión', error);
-      res.status(500).send('Error interno del servidor');
+    console.error('Error al iniciar sesión', error);
+    res.status(500).send('Error interno del servidor');
   }
 });
 
-
-// Ruta para la página de inicio del restaurante
+// Ruta para registro de restaurante
 app.post('/registroRestaurante', upload.none(), async (req, res) => {
   console.log('Datos recibidos:', req.body);
   const { usuario, nombre, correo, nombre_restaurante, direccion, contrasenia } = req.body;
 
   if (!usuario || !nombre || !correo || !nombre_restaurante || !direccion || !contrasenia) {
-      return res.status(400).send('Todos los campos son requeridos');
+    return res.status(400).send('Todos los campos son requeridos');
   }
 
-  const client = await pool.connect();
   try {
-      await client.query('BEGIN');
-      const query1 = `INSERT INTO usuarios (usuario, nombre, correo, contrasenia, tipo_usuario) VALUES ($1, $2, $3, $4, 'restaurante') RETURNING id`;
-      const res1 = await client.query(query1, [usuario, nombre, correo, contrasenia]);
+    const hashedPassword = await bcrypt.hash(contrasenia, 10);
 
-      const userId = res1.rows[0].id;
-      const query2 = `INSERT INTO restaurantes (nombre, direccion, usuarios_id) VALUES ($1, $2, $3)`;
-      await client.query(query2, [nombre_restaurante, direccion, userId]);
+    await sequelize.transaction(async (t) => {
+      const newUser = await Usuario.create({
+        usuario,
+        nombre,
+        correo,
+        contrasenia: hashedPassword, // Almacenar la contraseña cifrada
+        tipo_usuario: 'restaurante',
+      }, { transaction: t });
 
-      await client.query('COMMIT');
-      res.send('Usuario restaurante registrado correctamente');
+      await Restaurante.create({
+        nombre: nombre_restaurante,
+        direccion,
+        usuarios_id: newUser.id
+      }, { transaction: t });
+    });
+
+    res.send('Usuario restaurante registrado correctamente');
   } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('Error al registrar usuario restaurante', error);
-      res.status(500).send('Error interno del servidor');
-  } finally {
-      client.release();
+    console.error('Error al registrar usuario restaurante', error);
+    res.status(500).send('Error interno del servidor');
   }
 });
 
 // Ruta para registro de recolectores
 app.post('/registroRecolector', upload.none(), async (req, res) => {
-    const { usuario, nombre, correo, contrasenia } = req.body;
-    if (!usuario || !nombre || !correo || !contrasenia) {
-        return res.status(400).send('Todos los campos son requeridos');
-    }
-    try {
-        const query1 = `INSERT INTO usuarios (usuario, nombre, correo, contrasenia, tipo_usuario) VALUES ($1, $2, $3, $4, 'recolector') RETURNING id`;
-        const result1 = await pool.query(query1, [usuario, nombre, correo, contrasenia]);
-        const userId = result1.rows[0].id;
+  const { usuario, nombre, correo, contrasenia } = req.body;
 
-        const query2 = `INSERT INTO recolectores (usuarios_id) VALUES ($1)`;
-        await pool.query(query2, [userId]);
+  if (!usuario || !nombre || !correo || !contrasenia) {
+    return res.status(400).send('Todos los campos son requeridos');
+  }
 
-        res.send('Recolector registrado correctamente');
-    } catch (error) {
-        console.error('Error al registrar recolector', error);
-        res.status(500).send('Error interno del servidor');
-    }
+  try {
+    const hashedPassword = await bcrypt.hash(contrasenia, 10);
+
+    await sequelize.transaction(async (t) => {
+      const newUser = await Usuario.create({
+        usuario,
+        nombre,
+        correo,
+        contrasenia: hashedPassword, // Almacenar la contraseña cifrada
+        tipo_usuario: 'recolector',
+      }, { transaction: t });
+
+      await Recolector.create({
+        usuarios_id: newUser.id
+      }, { transaction: t });
+    });
+
+    res.send('Usuario recolector registrado correctamente');
+  } catch (error) {
+    console.error('Error al registrar usuario recolector', error);
+    res.status(500).send('Error interno del servidor');
+  }
 });
 
-// Ruta para obtener usuarios
-app.get('/usuario', async (req, res) => {
-    try {
-        const query = 'SELECT * FROM usuarios';
-        const result = await pool.query(query);
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Error al obtener datos de usuarios', error);
-        res.status(500).send('Error interno del servidor');
-    }
+app.listen(process.env.PORT_SERVER, function () {
+  console.log("Servidor en el puerto " + process.env.PORT_SERVER);
 });
-
-app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
-});
-
