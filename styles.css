@@ -1,29 +1,20 @@
 body {
     margin: 0;
     font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Verdana, sans-serif;
-}
-body .container{
-    font-family: 'Arial', sans-serif;
-    line-height: 1.6;
     background-color: #f4f4f9;
     color: #333;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-}
-.container {
-    max-width: 800px;
-    margin: 20px;
-    padding: 20px;
-    background: #ffffff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
 }
 
-h1, h2 {
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2, h3 {
     color: #50a88a;
     margin-bottom: 10px;
 }
@@ -33,7 +24,7 @@ h1 {
     text-align: center;
 }
 
-h2 {
+h2, h3 {
     font-size: 1.8em;
     margin-top: 20px;
 }
@@ -98,6 +89,10 @@ b {
     font-weight: bold;
 }
 
+.menu-item:hover{
+    color: #50a88a;
+}
+
 .auth-buttons {
     display: flex;
     gap: 10px;
@@ -110,10 +105,11 @@ b {
     border-radius: 5px;
     font-size: 16px;
     font-weight: bold;
-    background-color: #50a88a;
+    /*background-color: #50a88a;*/
     color: #ffffff;
     border: none;
     cursor: pointer;
+    transition: background-color 0.3s;
 }
 
 .animacion {
@@ -130,27 +126,146 @@ b {
     text-align: center;
 }
 
-.login-button {
+.login-button, .register-button{
+    background-color: #85d7bc;
+}
+
+.login-button:hover, .register-button:hover{
     background-color: #50a88a;
 }
 
-.register-button {
-    background-color: #a9e0ce;
+/*estilos contenido de página principal
+(debajo del titulo por un planeta más limpio)*/
+
+.info-planeta-limpio {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 20px;
+    text-align: center;
+    background-color: #f2f2f2;
+    border-radius: 10px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
 }
 
-.login, .register {
+.info-planeta-limpio h2 {
+    font-size: 2.5rem;
+    color: #50a88a;
+    margin-bottom: 15px;
+}
+
+.info-planeta-limpio p {
+    font-size: 1.2rem;
+    color: #555;
+    margin-bottom: 20px;
+    line-height: 1.8;
+}
+
+.lista-beneficios {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.lista-beneficios li {
+    margin: 10px;
+    font-size: 1rem;
+    color: #333;
+    max-width: 250px;
+    text-align: left;
+}
+
+.lista-beneficios .icono {
+    font-size: 1.5rem;
+    margin-right: 8px;
+}
+
+.cita {
+    font-style: italic;
+    margin: 20px 0;
+    font-size: 1.1rem;
+    color: #777;
+    border-left: 4px solid #50a88a;
+    padding-left: 15px;
+}
+
+.galeria-imagenes {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.galeria-imagenes img {
+    width: 100%;
+    max-width: 200px;
+    margin: 5px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.video {
+    margin-top: 20px;
+}
+
+video {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+
+.register {
     display: none;
     justify-content: center;
     align-items: center;
-    height: calc(80vh - 60px);
+    height: calc(130vh - 60px);
 }
 
+.login {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    height: calc(80vh);
+}
+.section-registro-recolector {
+    max-width: 50%;
+    height: auto;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin: 4cap auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 40px;
 
+}
+
+.registerRecolector {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh);
+}
 
 .form-container {
     display: flex;
     flex-direction: column;
     align-items: center;
+
+    justify-content: center;
+    background-color: white;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 150px;
+    width: 100%;
+    max-width: 500px;
 }
 
 .logo-login {
@@ -199,13 +314,27 @@ b {
     height: 40px;
 }
 
-.sin-cuenta, .con-cuenta, .link-a-registro, .link-a-login {
-    color: #50a88a;
-    font-size: medium;
-    text-align: center;
+.boton-iniciar-sesion:hover, .boton-registrar:hover {
+    background-color: #50a88a;
+}
+
+.sin-cuenta,
+.con-cuenta {
+    font-size: 14px;
+    color: #333;
+}
+
+.link-a-registro,
+.link-a-login {
+    color: #63c3a3;
     text-decoration: none;
-    margin-bottom: 10px;
-    width: 100%;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.link-a-registro:hover,
+.link-a-login:hover {
+    color: #4b937b;
 }
 
 /* Media query para ocultar el encabezado completo en pantallas pequeñas */
@@ -225,3 +354,49 @@ b {
 }
 
 
+
+.waste-classification {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.waste-classification h1 {
+    text-align: center;
+    color: #50a88a;
+    margin-bottom: 20px;
+    font-size: 2rem;
+}
+
+.waste-classification p {
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.category {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #ffffff;
+}
+
+.category h2 {
+    color: #50a88a;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.category ul {
+    list-style: disc;
+    margin-left: 20px;
+    color: #555;
+}
+
+.category li {
+    margin-bottom: 5px;
+}

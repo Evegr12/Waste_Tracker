@@ -1,0 +1,103 @@
+/* Estilos globales */
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+/* Estilo para el contenedor principal */
+.container {
+    max-width: 900px;
+    margin: 40px auto; /* Margen automático para centrar */
+    padding: 20px;
+    background: #ffffff;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    text-align: center; /* Centramos el texto */
+}
+
+/* Estilos para encabezados */
+h1 {
+    font-size: 2.0em;
+    color: #50a88a;
+    margin-bottom: 20px;
+    text-transform: uppercase; /* Mayúsculas para encabezados principales */
+    letter-spacing: 2px; /* Espaciado entre letras */
+}
+
+h2 {
+    font-size: 1.5em;
+    color: #50a88a;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    text-transform: uppercase; /* Mayúsculas para subtítulos */
+    letter-spacing: 1px; /* Espaciado entre letras */
+}
+
+/* Estilo para el texto de los párrafos */
+p {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    text-align: justify; /* Justificar texto */
+}
+
+/* Estilos para las listas */
+ul, ol {
+    margin-bottom: 20px;
+    padding-left: 40px; /* Espaciado izquierdo */
+    text-align: left; /* Alineación a la izquierda para listas */
+}
+
+li {
+    margin-bottom: 10px;
+    line-height: 1.4; /* Espaciado entre líneas */
+}
+
+strong {
+    color: #50a88a;
+}
+
+/* Estilo para secciones */
+.info-section {
+    margin-top: 30px;
+    border-top: 2px solid #e0e0e0;
+    padding-top: 20px;
+}
+
+.section-wrapper {
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.how-it-works {
+    margin-top: 50px;
+    padding: 20px;
+    background-color: #e8f5f4;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Media query para pantallas más pequeñas */
+@media (max-width: 600px) {
+    h1 {
+        font-size: 2em;
+    }
+
+    h2 {
+        font-size: 1.5em;
+    }
+
+    p, li {
+        font-size: 1em;
+    }
+
+    .container {
+        padding: 10px;
+    }
+}

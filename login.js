@@ -15,16 +15,17 @@ typewriter
 //Mostrar Log in y ocultar inicio(animación)
 function showLogin() {
     document.getElementById('animacion').style.display = 'none';
+    document.getElementById('contenido-principal').style.display = 'none';
     document.getElementById('loginForm').style.display = 'flex';
     document.getElementById('registerFormRestaurante').style.display = 'none';
     document.getElementById('registerFormRecolector').style.display = 'none';
-    document.getElementById('registerFormRestaurante').style.display = 'none';
-    document.getElementById('registerFormRecolector').style.display = 'none';
+
 }
 
 //Mostrar registro restaurante y ocultar log in
 function showRegister() {
     document.getElementById('animacion').style.display = 'none';
+    document.getElementById('contenido-principal').style.display = 'none';
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerFormRestaurante').style.display = 'flex';
     document.getElementById('registerFormRecolector').style.display = 'none';
