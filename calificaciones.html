@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="calificaciones.css">
+    <title>Document</title>
+</head>
+<body>
+    <div class="rating-card">
+        <h3>Calificar</h3>
+        <div class="user-info">
+            <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
+            <span class="user-name">Julio Cruz</span>
+        </div>
+        <div class="rating">
+            <span class="star" data-value="1">&#9733;</span>
+            <span class="star" data-value="2">&#9733;</span>
+            <span class="star" data-value="3">&#9733;</span>
+            <span class="star" data-value="4">&#9733;</span>
+            <span class="star" data-value="5">&#9733;</span>
+        </div>
+        <button class="submit-button">Enviar</button>
+    </div>
+    <input type="hidden" id="ratingValue" name="rating" value="">
+    
+
+    <script>
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+            const rating = parseInt(star.getAttribute('data-value'));
+
+            document.querySelectorAll('.star').forEach(s => s.classList.remove('selected'));
+
+            // Añade la clase 'selected' a las estrellas desde la izquierda hasta la seleccionada
+            document.querySelectorAll('.star').forEach(s => {
+                if (parseInt(s.getAttribute('data-value')) <= rating) {
+                    s.classList.add('selected');
+                }
+            });
+
+        // Guarda la calificación en un campo oculto
+        document.getElementById('ratingValue').value = rating;
+        console.log(`Calificación seleccionada: ${rating} estrellas`);
+            });
+        });
+    </script>
+</body>
+</html>

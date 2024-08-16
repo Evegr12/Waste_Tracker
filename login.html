@@ -11,7 +11,7 @@
 <body>
     <header class="header">
         <div class="logo">
-            <img src="logoWT.png" alt="Waste Tracker Logo" class="logo-image"> Waste Tracker
+            <a href="login.html"><img src="logoWT.png" alt="Waste Tracker Logo" class="logo-image"></a><b>Waste Tracker</b>
         </div>
         <nav class="nav-menu">
             <ul>
@@ -25,35 +25,20 @@
         </div>
     </header>
 
-    <div id="contenido-principal" style="display: flex;">
-        <section class="info-planeta-limpio">
-            <div class="animacion" id="animacion">
-                <h1 class="text-primary mb-4" id="typewriter" style="display: flex;"></h1>
-                <p></p>
+    <div id="contenido-principal" class="background">
+        <div class="animacion" id="animacion">
+            <h1 class="text-primary mb-4" id="typewriter">¡Por un planeta más limpio!</h1>
+        </div>
+    
+        <div class="contenido">
+            <div class="cta">
+                <p>Waste Tracker facilita la recolección y gestión de residuos orgánicos, conectando restaurantes con recolectores para un entorno más sostenible. Únete a nosotros en la misión de reducir el impacto ambiental y promover un futuro más limpio para todos.</p>
+                <button class="register-button" onclick="showRegister()">Regístrate. ¡Es gratis!</button>
             </div>
-            <p>Waste Tracker facilita la recolección y gestión de residuos orgánicos, conectando restaurantes con recolectores para un entorno más sostenible. Únete a nosotros en la misión de reducir el impacto ambiental y promover un futuro más limpio para todos.</p>
-            
-            <ul class="lista-beneficios">
-                <li><span class="icono">♻️</span> <strong>Reduce Desperdicios:</strong> Minimiza el impacto ambiental clasificando adecuadamente los residuos.</li>
-                <li><span class="icono">🌿</span> <strong>Promueve el Reciclaje:</strong> Facilita el proceso de reciclaje y contribuye a la economía circular.</li>
-                <li><span class="icono">📈</span> <strong>Mejora la Eficiencia:</strong> Optimiza las operaciones de tu restaurante con una gestión eficaz de residuos.</li>
-            </ul>
-        
-            <blockquote class="cita">
-                "El mejor momento para plantar un árbol fue hace veinte años. El segundo mejor momento es ahora." - Proverbio Chino
-            </blockquote>
-        
-            <div class="galeria-imagenes">
-                <img src="compostaje.jpg" alt="Compostaje">
-                <img src="reciclaje.png" alt="Reciclaje">
-                <img src="naturaleza.jpg" alt="Naturaleza">
+            <div class="image-container">
+                <img src="inicio-wasteT.png" alt="Ilustración de Waste Tracker">
             </div>
-        
-            <div class="video">
-                <iframe width="560" height="315" src="https://www.youtube.com/embed/KPuXZlc6Vk0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-            </div>
-        </section>
-        
+        </div>
     </div>
 
     <div class="login" id="loginForm" style="display: none;">

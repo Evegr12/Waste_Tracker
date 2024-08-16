@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="stylesperfilRes.css">
+    <title>Document</title>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Mi restaurante</h2>
+        </div>
+        <div class="restaurant-info">
+            <label for="profileImageUpload">
+                <img src="kingfish.png" alt="King Fish" id="foto-perfil">
+            </label>
+            <input type="file" id="cargar-foto-perfil" style="display: none;" accept="image/*">
+            <a href="#"><img src="camara.png" alt="actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil').click();"></a>
+            <div class="restaurant-name">King Fish</div>
+        </div>
+        <div class="collection-info">
+            <span>33</span> Recolecciones
+        </div>
+        <div class="status">
+            <img src="smiley.png" alt="Excellent">
+            <p>Excellent</p>
+        </div>
+        <button class="logout-button" id="logoutButton">Cerrar sesión</button>
+        <!-- Formulario para cerrar sesión -->
+        <form id="logoutForm" action="/logout" method="POST" style="display:none;">
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>

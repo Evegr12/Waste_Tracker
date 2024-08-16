@@ -1,17 +1,13 @@
 require('dotenv').config();
-console.log('MYSQL_HOST:', process.env.MYSQL_HOST);
-console.log('MYSQL_USERNAME:', process.env.MYSQL_USERNAME);
-console.log('MYSQL_PASSWORD:', process.env.MYSQL_PASSWORD);
-console.log('MYSQL_DB:', process.env.MYSQL_DB);
-console.log('PORT:', process.env.PORT_SERVER);
-
 const express = require('express');
+const session = require('express-session');
 const cors = require('cors');
 const multer = require('multer');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');  
 const app = express();
 
 // Configuración de CORS
@@ -20,14 +16,25 @@ const corsOptions = {
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 };
-// Middleware para servir archivos estáticos
+
 app.use(express.static(path.join(__dirname)));
-// Middleware para manejar datos del formulario
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(cors(corsOptions));
 const upload = multer();
+app.use(session({
+  secret: 'your-secret-key', // Clave secreta
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } //true si se está usando HTTPS
+}));
+
+app.use(cors({
+  origin: 'http://localhost:8080', // Cambia esto al dominio de tu frontend
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 
 // Configuración del cliente de conexión a la base de datos con Sequelize
 const sequelize = new Sequelize({
@@ -45,7 +52,7 @@ async function connect() {
   } catch (e) {
     console.error("No se puede conectar a la BD.");
     console.error(e);
-    process.exit(1); // Terminar el proceso si no se puede conectar
+    process.exit(1);
   }
 }
 
@@ -70,7 +77,7 @@ const Usuario = sequelize.define('usuarios', {
     allowNull: false
   },
   contrasenia: {
-    type: DataTypes.STRING(80), // Asegúrate de que sea lo suficientemente largo para almacenar hashes
+    type: DataTypes.STRING(80),
     allowNull: false
   },
   tipo_usuario: {
@@ -82,155 +89,46 @@ const Usuario = sequelize.define('usuarios', {
   timestamps: false
 });
 
-const Restaurante = sequelize.define('restaurantes', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  usuarios_id: {
-    type: DataTypes.INTEGER,
+const TokenRevocado = sequelize.define('token_revocados', {
+  token: {
+    type: DataTypes.STRING,
     allowNull: false,
-    references: {
-      model: Usuario,
-      key: 'id'
-    }
-  },
-  nombre: {
-    type: DataTypes.STRING(45),
-    allowNull: false
-  },
-  direccion: {
-    type: DataTypes.STRING(150),
-    allowNull: false
-  }
-}, {
-  tableName: 'restaurantes',
-  timestamps: false
-});
-
-const Recolector = sequelize.define('recolectores', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
     primaryKey: true
-  },
-  usuarios_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: Usuario,
-      key: 'id'
-    }
   }
 }, {
-  tableName: 'recolectores',
-  timestamps: false
+  tableName: 'token_revocados',
+  timestamps: true // Esto agregará columnas createdAt y updatedAt
 });
 
-const Recoleccion = sequelize.define('recolecciones', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  restaurantes_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: Restaurante,
-      key: 'id'
-    }
-  },
-  recolectores_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: Recolector,
-      key: 'id'
-    }
-  },
-  fecha_solicitud: {
-    type: DataTypes.DATE,
-    allowNull: false
-  },
-  fecha_recoleccion: {
-    type: DataTypes.DATE,
-    allowNull: false
-  },
-  calificacion: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  }
-}, {
-  tableName: 'recolecciones',
-  timestamps: false
-});
-
-const NotificacionConsejo = sequelize.define('notificaciones_consejos', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  texto: {
-    type: DataTypes.STRING(50),
-    allowNull: false
-  }
-}, {
-  tableName: 'notificaciones_consejos',
-  timestamps: false
-});
-
-const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  texto: {
-    type: DataTypes.STRING(50),
-    allowNull: false
-  }
-}, {
-  tableName: 'mensajes_recoleccion',
-  timestamps: false
-});
-
-// Relaciones
-Restaurante.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
-Usuario.hasOne(Restaurante, { foreignKey: 'usuarios_id' });
-
-Recolector.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
-Usuario.hasOne(Recolector, { foreignKey: 'usuarios_id' });
-
-Restaurante.hasMany(Recoleccion, { foreignKey: 'restaurantes_id' });
-Recoleccion.belongsTo(Restaurante, { foreignKey: 'restaurantes_id' });
-
-Recolector.hasMany(Recoleccion, { foreignKey: 'recolectores_id' });
-Recoleccion.belongsTo(Recolector, { foreignKey: 'recolectores_id' });
-
-// Sincronizar la base de datos
-async function sync() {
-  try {
-    await sequelize.sync({ force: false }); // No eliminar las tablas en cada sincronización
-    console.log("Base de datos sincronizada.");
-  } catch (e) {
-    console.error("La BD no se pudo actualizar.");
-    console.error(e);
-  }
+// Función para generar tokens JWT
+function generarToken(usuario) {
+  return jwt.sign({
+    id: usuario.id,
+    nombre: usuario.nombre,
+    correo: usuario.correo,
+    tipo_usuario: usuario.tipo_usuario
+  }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
 }
 
-sync();
-
-// Ruta raíz, devuelve el archivo HTML principal
-app.get('/', function (req, res) {
-  res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-app.get('/inicioRestaurante', function (req, res) {
-  res.sendFile(path.join(__dirname, 'inicioRestaurante.html'));
-});
+// Middleware para verificar el token JWT
+async function verificarToken(req, res, next) {
+  const token = req.headers['authorization'];
+  if (!token) {
+    return res.status(403).send('Se requiere un token');
+  }
+  try {
+    const tokenSolo = token.split(' ')[1]; // Obtener solo el token después de 'Bearer'
+    const tokenRevocado = await TokenRevocado.findOne({ where: { token: tokenSolo } });
+    if (tokenRevocado) {
+      return res.status(401).send('Token inválido o revocado');
+    }
+    const decodificado = jwt.verify(tokenSolo, process.env.JWT_SECRET);
+    req.usuario = decodificado;
+    next();
+  } catch (error) {
+    return res.status(401).send('Token inválido');
+  }
+}
 
 // Ruta para login
 app.post('/login', async (req, res) => {
@@ -246,14 +144,10 @@ app.post('/login', async (req, res) => {
       if (!match) {
         return res.status(401).send('Correo electrónico o contraseña incorrectos');
       }
-      
-      if (user.tipo_usuario === 'restaurante') {
-        res.json({ tipo_usuario: 'restaurante' });
-      } else if (user.tipo_usuario === 'recolector') {
-        res.json({ tipo_usuario: 'recolector' });
-      } else {
-        res.status(401).send('Tipo de usuario no válido');
-      }
+
+      // Generar token JWT
+      const token = generarToken(user);
+      res.json({ token, tipo_usuario: user.tipo_usuario });
     } else {
       res.status(401).send('Correo electrónico o contraseña incorrectos');
     }
@@ -263,9 +157,22 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Ruta raíz, devuelve el archivo HTML principal
+app.get('/', function (req, res) {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/inicioRestaurante', function (req, res) {
+  res.sendFile(path.join(__dirname, 'inicioRestaurante.html'));
+});
+
+app.get('/inicioRecolector', function (req, res) {
+  res.sendFile(path.join(__dirname, 'inicioRecolector.html'));
+});
+
+
 // Ruta para registro de restaurante
 app.post('/registroRestaurante', upload.none(), async (req, res) => {
-  console.log('Datos recibidos:', req.body);
   const { usuario, nombre, correo, nombre_restaurante, direccion, contrasenia } = req.body;
 
   if (!usuario || !nombre || !correo || !nombre_restaurante || !direccion || !contrasenia) {
@@ -280,7 +187,7 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
         usuario,
         nombre,
         correo,
-        contrasenia: hashedPassword, // Almacenar la contraseña cifrada
+        contrasenia: hashedPassword,
         tipo_usuario: 'restaurante',
       }, { transaction: t });
 
@@ -300,9 +207,9 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
 
 // Ruta para registro de recolectores
 app.post('/registroRecolector', upload.none(), async (req, res) => {
-  const { usuario, nombre, correo, contrasenia } = req.body;
+  const { usuario, nombre, correo, telefono, contrasenia } = req.body;
 
-  if (!usuario || !nombre || !correo || !contrasenia) {
+  if (!usuario || !nombre || !correo || !telefono || !contrasenia) {
     return res.status(400).send('Todos los campos son requeridos');
   }
 
@@ -314,11 +221,12 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
         usuario,
         nombre,
         correo,
-        contrasenia: hashedPassword, // Almacenar la contraseña cifrada
+        contrasenia: hashedPassword,
         tipo_usuario: 'recolector',
       }, { transaction: t });
 
       await Recolector.create({
+        telefono,
         usuarios_id: newUser.id
       }, { transaction: t });
     });
@@ -328,6 +236,18 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
     console.error('Error al registrar usuario recolector', error);
     res.status(500).send('Error interno del servidor');
   }
+});
+
+// Ruta para cerrar sesión
+app.post('/logout', (req, res) => {
+  // Destruir la sesión del usuario
+  req.session.destroy((err) => {
+      if (err) {
+          console.error('Error al destruir la sesión:', err);
+          return res.status(500).json({ error: 'Error al cerrar sesión' });
+      }
+      res.status(200).json({ message: 'Sesión cerrada correctamente' });
+  });
 });
 
 app.listen(process.env.PORT_SERVER, function () {
