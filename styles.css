@@ -1,12 +1,15 @@
-/* Global Styles */
 body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
     background-color: #ceeed7;
     color: #333;
 }
-
-/* Container */
+.form-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
 .container {
     display: flex;
     flex-direction: column;
@@ -16,7 +19,6 @@ body {
     padding: 20px;
 }
 
-/* Headings */
 h1, h2, h3 {
     color: #2F4F4F;
     margin-bottom: 10px;
@@ -43,8 +45,6 @@ p {
     line-height: 1.6;
 }
 
-
-/* Header */
 .header {
     display: flex;
     justify-content: space-between;
@@ -156,9 +156,6 @@ b {
     justify-content: center;
 }
 
-
-
-/* Forms */
 .form-container {
     display: flex;
     flex-direction: column;

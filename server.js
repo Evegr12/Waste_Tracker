@@ -89,6 +89,139 @@ const Usuario = sequelize.define('usuarios', {
   timestamps: false
 });
 
+const Restaurante = sequelize.define('restaurantes', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  usuarios_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Usuario,
+      key: 'id'
+    }
+  },
+  nombre: {
+    type: DataTypes.STRING(45),
+    allowNull: false
+  },
+  direccion: {
+    type: DataTypes.STRING(150),
+    allowNull: false
+  }
+}, {
+  tableName: 'restaurantes',
+  timestamps: false
+});
+const Recolector = sequelize.define('recolectores', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  usuarios_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Usuario,
+      key: 'id'
+    }
+  }
+}, {
+  tableName: 'recolectores',
+  timestamps: false
+});
+const Recoleccion = sequelize.define('recolecciones', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  restaurantes_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Restaurante,
+      key: 'id'
+    }
+  },
+  recolectores_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Recolector,
+      key: 'id'
+    }
+  },
+  fecha_solicitud: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  fecha_recoleccion: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  calificacion: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  }
+}, {
+  tableName: 'recolecciones',
+  timestamps: false
+});
+const NotificacionConsejo = sequelize.define('notificaciones_consejos', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  texto: {
+    type: DataTypes.STRING(50),
+    allowNull: false
+  }
+}, {
+  tableName: 'notificaciones_consejos',
+  timestamps: false
+});
+const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  texto: {
+    type: DataTypes.STRING(50),
+    allowNull: false
+  }
+}, {
+  tableName: 'mensajes_recoleccion',
+  timestamps: false
+});
+
+// Relaciones
+Restaurante.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+Usuario.hasOne(Restaurante, { foreignKey: 'usuarios_id' });
+Recolector.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+Usuario.hasOne(Recolector, { foreignKey: 'usuarios_id' });
+Restaurante.hasMany(Recoleccion, { foreignKey: 'restaurantes_id' });
+Recoleccion.belongsTo(Restaurante, { foreignKey: 'restaurantes_id' });
+Recolector.hasMany(Recoleccion, { foreignKey: 'recolectores_id' });
+Recoleccion.belongsTo(Recolector, { foreignKey: 'recolectores_id' });
+
+// Sincronizar la base de datos
+async function sync() {
+  try {
+    await sequelize.sync({ force: false }); // No eliminar las tablas en cada sincronización
+    console.log("Base de datos sincronizada.");
+  } catch (e) {
+    console.error("La BD no se pudo actualizar.");
+    console.error(e);
+  }
+}
+sync();
+
 const TokenRevocado = sequelize.define('token_revocados', {
   token: {
     type: DataTypes.STRING,
