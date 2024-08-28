@@ -9,17 +9,17 @@
 </head>
 
 <body>
-    <header class="header">
+    <header class="header" id="header">
         <div class="logo">
             <a href="login.html"><img src="logoWT.png" alt="Waste Tracker Logo" class="logo-image"></a><b>Waste Tracker</b>
         </div>
-        <nav class="nav-menu">
+        <nav class="nav-menu" id="header">
             <ul>
                 <li><a href="quienesSomos.html" class="menu-item">Quiénes somos</a></li>
                 <li><a href="clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>
             </ul>
         </nav>
-        <div class="auth-buttons">
+        <div id="header" class="auth-buttons">
             <button class="login-button" onclick="showLogin()">Iniciar sesión</button>
             <button class="register-button" onclick="showRegister()">Regístrate</button>
         </div>
@@ -32,6 +32,7 @@
     
         <div class="contenido">
             <div class="cta">
+                <h3 class="subtitulo">Separar tus residuos es lo de hoy!</h3>
                 <p>Waste Tracker facilita la recolección y gestión de residuos orgánicos, conectando restaurantes con recolectores para un entorno más sostenible. Únete a nosotros en la misión de reducir el impacto ambiental y promover un futuro más limpio para todos.</p>
                 <button class="register-button" onclick="showRegister()">Regístrate. ¡Es gratis!</button>
             </div>
@@ -42,6 +43,7 @@
     </div>
 
     <div class="login" id="loginForm" style="display: none;">
+        <!--Formulario login-->
         <div class="form-container">
             <img src="login.png" alt="logo-login" class="logo-login">
             <h2>Te damos la bienvenida a Waste Tracker</h2>
@@ -130,6 +132,14 @@
                         onclick="showLogin()">Inicia sesión</a></p>
         </div>
     </div>
+
+    <!-- Pie de pagina (footer) -->
+    <footer class="seccion-oscura d-flex flex-column align-items-center justify-content-center" id="footer"> 
+    <img class="footer-logo" src="icono-blanco.svg" alt="Logo del portafolio">
+        <p class="footer-texto text-center">Logremos un mundo mejor.<br>Un mundo más verde. 🌱</p>
+        <div class="derechos-de-autor">Waste Tracker (2024) &#169;</div>
+    </footer>
+
 
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
     <script src="login.js"></script>

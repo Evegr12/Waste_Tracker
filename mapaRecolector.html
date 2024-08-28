@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapa de Solicitudes de Recolección</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+
+        // Tu token de Mapbox
+        const mapboxAccessToken = 'pk.eyJ1IjoiZXZlZWwxMiIsImEiOiJjbTA3MGk4MzkwOThhMmtweWR6bXIzN243In0.383L_pn-MRKDck06J7jktw';
+        // Inicializa el mapa
+        const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
+
+        // Agrega una capa de tile map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Obtén los datos de solicitudes pendientes
+        fetch('/solicitudes-pendientes')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(request => {
+                    if (request.restaurante.latitude && request.restaurante.longitude) {
+                        L.marker([request.restaurante.latitude, request.restaurante.longitude])
+                            .addTo(map)
+                            .bindPopup(`<b>Solicitud ID:</b> ${request.id}<br><b>Dirección:</b> ${request.restaurante.direccion}`);
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching requests:', error));
+    </script>
+
+    <button id="aceptar-recoleccion" data-recoleccion-id="ID_DE_LA_RECOLECCION">Aceptar Recolección</button>
+
+    <script>
+        document.getElementById('aceptar-recoleccion').addEventListener('click', function() {
+        const recoleccionId = this.getAttribute('data-recoleccion-id');
+
+            fetch('/aceptar-recoleccion', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ recoleccion_id: recoleccionId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    window.location.href = 'ruta.html'; // Redirigir al mapa después de aceptar
+                } else {
+                    alert('Error al aceptar la recolección.');
+                }
+            })
+            .catch(error => {
+                console.error('Error al aceptar la recolección:', error);
+                alert('Hubo un error al aceptar la recolección. Por favor, intenta de nuevo.');
+            });
+
+
+            if (!req.user) {
+                return res.status(401).json({ message: 'Usuario no autenticado.' });
+            }
+            const recolectorId = req.user.id;
+
+        });
+    </script>
+
+</body>
+</html>

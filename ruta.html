@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ruta hacia la Recolección</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="map" style="height: 600px;"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Obtener el ID de la recolección desde los parámetros de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const recoleccionId = urlParams.get('recoleccion_id');
+
+        // Obtener las coordenadas desde el servidor (ejemplo)
+        fetch(`/ruta?recoleccion_id=${recoleccionId}`)
+            .then(response => response.json())
+            .then(data => {
+                const recolectorLat = data.recolector_lat;
+                const recolectorLng = data.recolector_lng;
+                const restauranteLat = data.restaurante_lat;
+                const restauranteLng = data.restaurante_lng;
+
+                // Crear el mapa y agregar la ruta
+                const map = L.map('map').setView([recolectorLat, recolectorLng], 13);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+
+                L.marker([recolectorLat, recolectorLng]).addTo(map)
+                    .bindPopup('Ubicación actual del recolector')
+                    .openPopup();
+
+                L.marker([restauranteLat, restauranteLng]).addTo(map)
+                    .bindPopup('Restaurante')
+                    .openPopup();
+
+                L.polyline([
+                    [recolectorLat, recolectorLng],
+                    [restauranteLat, restauranteLng]
+                ], { color: 'blue' }).addTo(map);
+            });
+    </script>
+</body>
+</html>

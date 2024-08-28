@@ -9,6 +9,11 @@ const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');  
 const app = express();
+const Nominatim = require('nominatim-client');
+const nominatim = Nominatim.createClient({
+  useragent: "MyApp",             
+  referer: 'http://example.com', 
+});
 
 // Configuración de CORS
 const corsOptions = {
@@ -18,16 +23,16 @@ const corsOptions = {
 };
 
 app.use(express.static(path.join(__dirname)));
-app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 const upload = multer();
 app.use(session({
-  secret: 'your-secret-key', // Clave secreta
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false } //true si se está usando HTTPS
+  secret: 'Dellevesecret', // Clave secreta
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: true } //true si se está usando HTTPS
 }));
 
 app.use(cors({
@@ -110,7 +115,15 @@ const Restaurante = sequelize.define('restaurantes', {
   direccion: {
     type: DataTypes.STRING(150),
     allowNull: false
-  }
+  },
+  latitude: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  longitude: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
 }, {
   tableName: 'restaurantes',
   timestamps: false
@@ -149,7 +162,7 @@ const Recoleccion = sequelize.define('recolecciones', {
   },
   recolectores_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true, //de inicio se registra como nulo, pero al ser aceptada la solicitud, se le asigna el id del recolector
     references: {
       model: Recolector,
       key: 'id'
@@ -161,10 +174,15 @@ const Recoleccion = sequelize.define('recolecciones', {
   },
   fecha_recoleccion: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: true
   },
   calificacion: {
     type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  estado: {
+    type: DataTypes.STRING,
+    defaultValue: 'pendiente',  // Estado: 'pendiente', 'en proceso', 'completado'
     allowNull: false
   }
 }, {
@@ -213,7 +231,8 @@ Recoleccion.belongsTo(Recolector, { foreignKey: 'recolectores_id' });
 // Sincronizar la base de datos
 async function sync() {
   try {
-    await sequelize.sync({ force: false }); // No eliminar las tablas en cada sincronización
+    await sequelize.sync({ force: false
+     }); // No eliminar las tablas en cada sincronización
     console.log("Base de datos sincronizada.");
   } catch (e) {
     console.error("La BD no se pudo actualizar.");
@@ -275,20 +294,30 @@ app.post('/login', async (req, res) => {
       const user = results[0];
       const match = await bcrypt.compare(contrasenia, user.contrasenia);
       if (!match) {
-        return res.status(401).send('Correo electrónico o contraseña incorrectos');
+        return res.status(401).json({ error: 'Correo electrónico o contraseña incorrectos' });
       }
 
-      // Generar token JWT
+      const restaurante = await Restaurante.findOne({ where: { usuarios_id: user.id } });
+
+      // Si el restaurante existe, se obtiene su dirección
+      const direccion = restaurante ? restaurante.direccion : null;
+
       const token = generarToken(user);
-      res.json({ token, tipo_usuario: user.tipo_usuario });
+      res.json({ 
+        token, 
+        tipo_usuario: user.tipo_usuario,
+        restaurantes_id: restaurante ? restaurante.id : null,
+        direccion: direccion // Incluye la dirección en la respuesta
+      });
     } else {
-      res.status(401).send('Correo electrónico o contraseña incorrectos');
+      res.status(401).json({ error: 'Correo electrónico o contraseña incorrectos' });
     }
   } catch (error) {
     console.error('Error al iniciar sesión', error);
-    res.status(500).send('Error interno del servidor');
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
 
 // Ruta raíz, devuelve el archivo HTML principal
 app.get('/', function (req, res) {
@@ -340,9 +369,9 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
 
 // Ruta para registro de recolectores
 app.post('/registroRecolector', upload.none(), async (req, res) => {
-  const { usuario, nombre, correo, telefono, contrasenia } = req.body;
+  const { usuario, nombre, correo, contrasenia } = req.body;
 
-  if (!usuario || !nombre || !correo || !telefono || !contrasenia) {
+  if (!usuario || !nombre || !correo || !contrasenia) {
     return res.status(400).send('Todos los campos son requeridos');
   }
 
@@ -359,7 +388,6 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
       }, { transaction: t });
 
       await Recolector.create({
-        telefono,
         usuarios_id: newUser.id
       }, { transaction: t });
     });
@@ -370,6 +398,142 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
     res.status(500).send('Error interno del servidor');
   }
 });
+
+// Función para obtener las coordenadas a partir de la dirección
+async function obtenerCoordenadas(direccion) {
+    if (!direccion) {
+        console.error("La dirección es undefined o vacía. No se pueden obtener coordenadas.");
+        return { lat: null, lon: null };
+    }
+
+    console.log(`Obteniendo coordenadas para la dirección: ${direccion}`);
+
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.length > 0) {
+            const { lat, lon } = data[0];
+            return { lat, lon };
+        } else {
+            console.error("No se encontraron coordenadas para la dirección.");
+            return { lat: null, lon: null };
+        }
+    } catch (error) {
+        console.error("Error al obtener coordenadas:", error);
+        return { lat: null, lon: null };
+    }
+}
+
+app.post('/solicitar-recoleccion', async (req, res) => {
+  console.log("Datos recibidos en la solicitud:", req.body);
+  const { direccion, restaurantes_id } = req.body;
+  console.log("Dirección recibida:", direccion);
+
+  try {
+    // Obtener las coordenadas de la dirección
+    const coordenadas = await obtenerCoordenadas(direccion);
+
+    // Mostrar las coordenadas
+    console.log("Coordenadas obtenidas:", coordenadas);
+
+    // Actualizar las coordenadas en la tabla restaurantes
+    await Restaurante.update(
+      { latitude: coordenadas.lat, longitude: coordenadas.lon },
+      { where: { id: restaurantes_id } }
+    );
+
+    // Crear la solicitud de recolección
+    const recoleccion = await Recoleccion.create({
+      restaurantes_id: restaurantes_id,
+      fecha_solicitud: new Date(),
+      estado: 'pendiente'
+    });
+
+    // Enviar una respuesta al cliente
+    res.json({ message: "Solicitud de recolección enviada correctamente" });
+  } catch (error) {
+    console.error('Error al guardar la solicitud de recolección:', error);
+    res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
+  }
+});
+
+// Ruta para obtener solicitudes de recolección pendientes
+app.get('/solicitudes-pendientes', async (req, res) => {
+  try {
+    const solicitudesPendientes = await Recoleccion.findAll({
+      where: {
+        estado: 'pendiente',
+      },
+      include: [{
+        model: Restaurante,
+        attributes: ['latitude', 'longitude', 'direccion'],
+      }],
+    });
+
+    if (solicitudesPendientes.length === 0) {
+      return res.status(404).json({ message: 'No hay solicitudes pendientes' });
+    }
+
+    res.json(solicitudesPendientes);
+  } catch (error) {
+    console.error('Error al obtener solicitudes pendientes:', error);
+    res.status(500).json({ error: 'Ocurrió un error al obtener las solicitudes pendientes' });
+  }
+});
+
+//El recolector acepta la solicitud
+app.post('/aceptar-recoleccion', async (req, res) => {
+  const { recoleccion_id } = req.body;
+  const recolectorId = req.user.id; // Obtén el ID del recolector desde el token de autenticación
+
+  try {
+    // Encuentra la solicitud de recolección
+    const recoleccion = await Recoleccion.findByPk(recoleccion_id);
+    
+    if (!recoleccion) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    if (recoleccion.estado !== 'pendiente') {
+      return res.status(400).json({ error: 'La solicitud ya está en proceso o completada' });
+    }
+
+    // Actualiza el estado de la solicitud y asigna el recolector
+    await recoleccion.update({
+      estado: 'en proceso',
+      recolectores_id: recolectorId
+    });
+
+    // Enviar una respuesta al cliente
+    res.json({ message: 'Solicitud aceptada y en proceso' });
+  } catch (error) {
+    console.error('Error al aceptar la recolección:', error);
+    res.status(500).json({ error: 'Error al aceptar la recolección' });
+  }
+});
+
+//ruta notificaciones
+app.get('/notificaciones', async (req, res) => {
+  try {
+      const result = await sequelize.query('SELECT texto FROM notificaciones_consejos');
+      res.json(result.rows.length > 0 ? result.rows : []);  // Envía un array vacío si no hay resultados
+  } catch (error) {
+      console.error('Error al obtener notificaciones:', error);
+      res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+app.get('/usuarios', async (req, res) => {
+  try {
+    const usuarios = await Usuario.findAll();  // Recuperar todos los usuarios
+    res.json(usuarios);  // Enviar los usuarios en formato JSON
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
 
 // Ruta para cerrar sesión
 app.post('/logout', (req, res) => {

@@ -7,6 +7,18 @@
     <title>Document</title>
 </head>
 <body>
+    <header>
+        <div class="logo">
+            <a href="inicioRestaurante.html"><img src="logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones" href="notificaciones.html"></a>
+            <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
+            <a href="perfilRestaurante.html"><img src="perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
     <div class="rating-card">
         <h3>Calificar</h3>
         <div class="user-info">
@@ -20,30 +32,63 @@
             <span class="star" data-value="4">&#9733;</span>
             <span class="star" data-value="5">&#9733;</span>
         </div>
-        <button class="submit-button">Enviar</button>
+        <button class="submit-button">Enviar calificación</button>
     </div>
     <input type="hidden" id="ratingValue" name="rating" value="">
     
 
     <script>
-        document.querySelectorAll('.star').forEach(star => {
-            star.addEventListener('click', () => {
-            const rating = parseInt(star.getAttribute('data-value'));
+        document.addEventListener('DOMContentLoaded', () => {
+            const stars = document.querySelectorAll('.star');
+            let selectedValue = 0; // Variable para almacenar la calificación seleccionada
 
-            document.querySelectorAll('.star').forEach(s => s.classList.remove('selected'));
-
-            // Añade la clase 'selected' a las estrellas desde la izquierda hasta la seleccionada
-            document.querySelectorAll('.star').forEach(s => {
-                if (parseInt(s.getAttribute('data-value')) <= rating) {
-                    s.classList.add('selected');
-                }
+            stars.forEach(star => {
+                star.addEventListener('mouseover', handleMouseOver);
+                star.addEventListener('mouseout', handleMouseOut);
+                star.addEventListener('click', handleClick);
             });
 
-        // Guarda la calificación en un campo oculto
-        document.getElementById('ratingValue').value = rating;
-        console.log(`Calificación seleccionada: ${rating} estrellas`);
-            });
+            function handleMouseOver(event) {
+                const value = event.target.getAttribute('data-value');
+                setRating(value, true); // Muestra la calificación de la estrella sobre la que pasa el ratón
+            }
+
+            function handleMouseOut() {
+                setRating(selectedValue, false); // Restaura la calificación seleccionada
+            }
+
+            function handleClick(event) {
+                selectedValue = event.target.getAttribute('data-value'); // Actualiza la calificación seleccionada
+                setRating(selectedValue, false); // Aplica la calificación seleccionada
+            }
+
+            function setRating(value, isHover) {
+                stars.forEach(star => {
+                    const starValue = parseInt(star.getAttribute('data-value'));
+                    if (starValue <= value) {
+                        star.classList.add('selected');
+                    } else {
+                        star.classList.remove('selected');
+                    }
+
+                    if (isHover && starValue <= value) {
+                        star.classList.add('hover'); // Aplica el estilo de hover
+                    } else {
+                        star.classList.remove('hover'); // Remueve el estilo de hover
+                    }
+                });
+            }
         });
     </script>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="inicioRestaurante.html"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="solicitudRecoleccion.html"><img src="bote-icon.png" alt="Bote"></a>
+            <a href="mapa.html"><img src="map-icon.png" alt="Mapa"></a>
+            <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
 </body>
 </html>

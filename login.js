@@ -5,6 +5,7 @@ function showLogin() {
     document.getElementById('loginForm').style.display = 'flex';
     document.getElementById('registerFormRestaurante').style.display = 'none';
     document.getElementById('registerFormRecolector').style.display = 'none';
+    document.getElementById('footer').style.display = 'none';
 }
 
 function showRegister() {
@@ -13,6 +14,7 @@ function showRegister() {
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('registerFormRestaurante').style.display = 'flex';
     document.getElementById('registerFormRecolector').style.display = 'none';
+    document.getElementById('footer').style.display = 'none';
 }
 
 function showRegisterRecolector() {
@@ -20,6 +22,7 @@ function showRegisterRecolector() {
     document.getElementById('registerFormRestaurante').style.display = 'none';
     document.getElementById('registerFormRecolector').style.display = 'flex';
     document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('footer').style.display = 'none';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -34,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         typewriter
             .pauseFor(2400)
-            .typeString('<span style="color:#333;">¡Por un planeta más limpio!</span>')
+            .typeString('<span style="color:#50a88a;">¡Por un planeta más limpio!</span>')
             .pauseFor(200)
             .deleteChars(15)
             .start();
@@ -42,126 +45,75 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('El elemento con el ID "typewriter" no se encontró.');
     }
 
-    // Manejo del formulario de login
-    const formLogin = document.getElementById('login');
-    if (formLogin) {
-        formLogin.addEventListener('submit', async function(event) {
-            event.preventDefault();
+        // Manejo del formulario de login
+        const formLogin = document.getElementById('login');
+        if (formLogin) {
+            formLogin.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+                const correo = formData.get('correo');
+                const contrasenia = formData.get('contrasenia');
 
-            const formData = new FormData(this);
+            try {
             const response = await fetch('/login', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(Object.fromEntries(formData))
+                body: JSON.stringify({ correo, contrasenia })
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al iniciar sesión');
+            }
+
+            const data = await response.json();
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('restaurantes_id', data.restaurantes_id);
+                localStorage.setItem('direccion', data.direccion);
                 if (data.tipo_usuario === 'restaurante') {
-                    window.location.href = '/inicioRestaurante';
-                } else if (data.tipo_usuario === 'recolector') {
-                    window.location.href = '/inicioRecolector';
+                window.location.href = 'inicioRestaurante.html';
                 } else {
-                    alert('Tipo de usuario no válido');
+                window.location.href = 'inicioRecolector.html';
                 }
-            } else {
-                const errorMessage = await response.text();
-                alert(errorMessage);
             }
-        });
-    } else {
-        console.error('El elemento con el ID "login" no se encontró.');
-    }
-
-    // Manejo del formulario de registro para restaurante
-    const registerFormRestaurante = document.getElementById('registerFormRestaurante');
-    if (registerFormRestaurante) {
-        registerFormRestaurante.addEventListener('submit', async function(event) {
-            event.preventDefault();
-            const form = event.target;
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch('/registroRestaurante', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    alert('Restaurante registrado correctamente');
-                } else {
-                    alert('Error al registrar el restaurante');
-                }
             } catch (error) {
-                console.error('Error:', error);
-                alert('Error interno del servidor');
+            console.error('Error al iniciar sesión:', error);
+            alert(error.message);
             }
         });
-    } else {
-        console.error('El elemento con el ID "registerFormRestaurante" no se encontró.');
     }
-
-    // Manejo del formulario de registro para recolector
-    const registerFormRecolector = document.getElementById('registerFormRecolector');
-    if (registerFormRecolector) {
-        registerFormRecolector.addEventListener('submit', async function(event) {
-            event.preventDefault();
-            const form = event.target;
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch('/registroRecolector', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    alert('Recolector registrado correctamente');
-                } else {
-                    alert('Error al registrar el recolector');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error interno del servidor');
-            }
-        });
-    } else {
-        console.error('El elemento con el ID "registerFormRecolector" no se encontró.');
-    }
-
-    // Manejo del botón de logout
-    const logoutButton = document.getElementById('logoutButton');
-if (logoutButton) {
-    logoutButton.addEventListener('click', function(event) {
-        event.preventDefault();
-        fetch('/logout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // Asegúrate de incluir encabezados adicionales si es necesario (por ejemplo, token CSRF)
-            },
-            credentials: 'include' // Asegúrate de incluir credenciales si es necesario
-        })
-        .then(response => {
-            if (response.ok) {
-                window.location.href = '/'; // Redirigir a la página de inicio u otra página
-            } else {
-                alert('Error al cerrar sesión');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error interno del servidor');
-        });
-    });
-} else {
-    console.error('El elemento con el ID "logoutButton" no se encontró.');
-}
 });
 
-
+//registro Recolector
+document.querySelector('#formRegistroRecolector').addEventListener('submit', async function(event) {
+        event.preventDefault();
+    
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+    
+        try {
+        const response = await fetch('/registroRecolector', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    
+        const result = await response.json();
+        if (result.success) {
+            window.alert(result.message);
+            // Redirigir o hacer algo después de un registro exitoso
+        } else {
+            window.alert(result.message);
+        }
+        } catch (error) {
+        console.error('Error:', error);
+        window.alert('Hubo un error al intentar registrar el usuario.');
+        }
+    });
+    
 // Confirmación de cierre de sesión
 document.getElementById('logoutButton').addEventListener('click', function(event) {
     event.preventDefault();
@@ -181,5 +133,3 @@ document.getElementById('cargar-foto-perfil').addEventListener('change', functio
         reader.readAsDataURL(file);
     }
 });
-
-
