@@ -45,91 +45,145 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('El elemento con el ID "typewriter" no se encontró.');
     }
 
-        // Manejo del formulario de login
-        const formLogin = document.getElementById('login');
-        if (formLogin) {
-            formLogin.addEventListener('submit', async function(event) {
-                event.preventDefault();
-                const formData = new FormData(this);
-                const correo = formData.get('correo');
-                const contrasenia = formData.get('contrasenia');
+    // Manejo del formulario de login
+    const formLogin = document.getElementById('login');
+    if (formLogin) {
+        formLogin.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const correo = formData.get('correo');
+            const contrasenia = formData.get('contrasenia');
 
             try {
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: {
-                'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ correo, contrasenia })
-            });
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ correo, contrasenia })
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al iniciar sesión');
-            }
-
-            const data = await response.json();
-            if (data.token) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('restaurantes_id', data.restaurantes_id);
-                localStorage.setItem('direccion', data.direccion);
-                if (data.tipo_usuario === 'restaurante') {
-                window.location.href = 'inicioRestaurante.html';
-                } else {
-                window.location.href = 'inicioRecolector.html';
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al iniciar sesión');
                 }
-            }
+
+                const data = await response.json();
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('restaurantes_id', data.restaurantes_id);
+                    if (data.tipo_usuario === 'recolector') {
+                        localStorage.setItem('recolector_id', data.id);  // Cambiar data.recolector_id por data.id
+                    }
+                    localStorage.setItem('usuarios_id', data.id);  // Cambiar data.usuarios_id por data.id
+                    localStorage.setItem('direccion', data.direccion);
+                    window.location.href = data.tipo_usuario === 'restaurante' ? 'inicioRestaurante.html' : 'inicioRecolector.html';
+                }
             } catch (error) {
-            console.error('Error al iniciar sesión:', error);
-            alert(error.message);
+                console.error('Error al iniciar sesión:', error);
+                alert(error.message);
             }
         });
     }
-});
 
-//registro Recolector
-document.querySelector('#formRegistroRecolector').addEventListener('submit', async function(event) {
-        event.preventDefault();
-    
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-    
-        try {
-        const response = await fetch('/registroRecolector', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    
-        const result = await response.json();
-        if (result.success) {
-            window.alert(result.message);
-            // Redirigir o hacer algo después de un registro exitoso
-        } else {
-            window.alert(result.message);
+    // Confirmación de cierre de sesión
+    const logoutButton = document.getElementById('logoutButton');
+        if (logoutButton) {
+            logoutButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                const logoutForm = document.getElementById('logoutForm');
+                if (logoutForm && confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                    logoutForm.submit();
+                } else {
+                    console.error('El formulario de cierre de sesión "logoutForm" no se encontró.');
+                }
+            });
         }
-        } catch (error) {
-        console.error('Error:', error);
-        window.alert('Hubo un error al intentar registrar el usuario.');
+
+    // Cargar imagen de perfil
+    cargarFotoPerfil.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            // Verifica que el archivo sea una imagen
+            if (file.type.startsWith('image/')) {
+                if (file.size > 2 * 1024 * 1024) { // Limite de 2MB
+                    alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const fotoPerfil = document.getElementById('foto-perfil');
+                    if (fotoPerfil) {
+                        fotoPerfil.setAttribute('src', event.target.result);
+                    }
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert('El archivo seleccionado no es una imagen válida.');
+            }
+        }
+    });    
+
+    // Registro Recolector
+    const formRegistroRecolector = document.getElementById('formRegistroRecolector');
+    if (formRegistroRecolector) {
+        formRegistroRecolector.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/registroRecolector', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.alert(result.message);
+                    //Redirigir o hacer algo después de un registro exitoso
+                    alert('Registro exitoso. ¡Ahora puedes iniciar sesión!');
+                } else {
+                    window.alert(result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                window.alert('Hubo un error al intentar registrar el usuario.');
+            }
+        });
+    }
+
+    // Registro Restaurante
+    const formRegistroRestaurante = document.getElementById('formRegistroRestaurante');
+        if (formRegistroRestaurante) {
+            formRegistroRestaurante.addEventListener('submit', async function(event) {  // Cambié `formRegistroRecolector` a `formRegistroRestaurante`
+                event.preventDefault();
+
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+
+                try {
+                    const response = await fetch('/registroRestaurante', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        window.alert(result.message);
+                        // Redirigir o hacer algo después de un registro exitoso
+                        alert('Registro exitoso. ¡Ahora puedes iniciar sesión!');
+                    } else {
+                        window.alert(result.message);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    window.alert('Hubo un error al intentar registrar el usuario.');
+                }
+            });
         }
     });
-    
-// Confirmación de cierre de sesión
-document.getElementById('logoutButton').addEventListener('click', function(event) {
-    event.preventDefault();
-    if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-        document.getElementById('logoutForm').submit();
-    }
-});
 
-// Cargar imagen de perfil
-document.getElementById('cargar-foto-perfil').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            document.getElementById('foto-perfil').setAttribute('src', event.target.result);
-        }
-        reader.readAsDataURL(file);
-    }
-});

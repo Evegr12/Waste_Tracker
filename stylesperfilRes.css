@@ -81,38 +81,69 @@ nav img:hover {
 .header {
     margin-bottom: 20px;
 }
+
 .header img {
     width: 40px;
 }
+
+.restaurant-info {
+    position: relative; /* Hacer que el contenedor tenga posición relativa */
+    width: 280px;
+    height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .restaurant-info img {
-    width: 180px;
-    height: 180px;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    margin-bottom: 40px;
-    display: flex;
-    align-content: center;
 }
+
+.cargar-foto-perfil {
+    position: absolute; /* Posiciona la foto de perfil sobre la imagen del restaurante */
+    top: 70%;
+    left: 65%;
+    transform: translate(-50%, -50%); /* Centra la imagen de perfil */
+    width: 80px; /* Ajusta el tamaño según sea necesario */
+    height: auto;
+    border-radius: 70%;
+    border: 2px solid white; /* Opcional: Añade un borde blanco para resaltar la imagen de perfil */
+    background-color: white; /* Opcional: Añade un fondo blanco */
+}
+
 .restaurant-name {
-    font-size: 24px;
+    margin-top: 280px; /* Ajustar valor para que el nombre esté debajo de la imagen de perfil */
+    font-size: 28px;
     color: #333;
-    margin: 10px 0;
 }
+
 .collection-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centra los elementos horizontalmente */
+    position: relative;
     font-size: 18px;
     color: #333;
-    margin: 20px 0;
+    margin: 30px 0;
 }
+
 .collection-info span {
     font-weight: bold;
     font-size: 24px;
+    padding: auto;
 }
+
 .status {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 10px;
+    margin-top: 15px;
+    padding: auto;
 }
+
 .status img {
     width: 50px;
     margin-right: 10px;
@@ -123,9 +154,26 @@ nav img:hover {
 }
 
 .logout-button {
-    color:#427f48;
+    color: #ffffff; /* Color del texto */
+    background-color: #78c1a0; /* Color de fondo del botón */
     font-size: 14px;
+    padding: 10px 20px; /* Espacio interno del botón (arriba y abajo, izquierda y derecha) */
+    border: none; /* Sin borde */
+    border-radius: 5px; /* Bordes redondeados */
+    margin: 12px 0; /* Espacio entre el botón y el contenido de arriba y abajo */
+    cursor: pointer; /* Cambia el cursor al pasar sobre el botón */
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Transiciones suaves para el color y el tamaño */
 }
+
+.logout-button:hover {
+    background-color: #5b957a; /* Color de fondo al pasar el cursor */
+    transform: scale(1.05); /* Agranda ligeramente el botón */
+}
+
+.logout-button:active {
+    background-color: #387460; /* Color de fondo cuando el botón está presionado */
+}
+
 
 .cargar-foto-perfil {
     width: 50px !important; /* Ajusta el tamaño según tus necesidades */

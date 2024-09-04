@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!--<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -45,3 +45,44 @@
     </script>
 </body>
 </html>
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapa de Rutas de Recolección Aceptadas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script>
+        const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Conéctate al servidor WebSocket
+        const socket = new WebSocket('ws://localhost:8085');
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const ubicacionRecolector = L.latLng(data.latitude, data.longitude);
+            
+            // Actualiza la ubicación del recolector en el mapa
+            L.marker(ubicacionRecolector).addTo(map);
+        };
+    </script>
+</body>
+</html>
+

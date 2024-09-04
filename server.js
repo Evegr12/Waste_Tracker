@@ -14,6 +14,20 @@ const nominatim = Nominatim.createClient({
   useragent: "MyApp",             
   referer: 'http://example.com', 
 });
+const http = require('http');
+const socketIo = require('socket.io');
+const server = http.createServer(app);
+const io = socketIo(server);
+
+// Configura el manejo de eventos de Socket.io
+io.on('connection', (socket) => {
+  console.log('Nuevo cliente conectado');
+  socket.on('disconnect', () => {
+    console.log('Cliente desconectado');
+  });
+});
+
+
 
 // Configuración de CORS
 const corsOptions = {
@@ -36,7 +50,7 @@ app.use(session({
 }));
 
 app.use(cors({
-  origin: 'http://localhost:8080', // Cambia esto al dominio de tu frontend
+  origin:'http://localhost:8080', // Cambia esto al dominio de tu frontend
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -141,7 +155,15 @@ const Recolector = sequelize.define('recolectores', {
       model: Usuario,
       key: 'id'
     }
-  }
+  },
+  latitude: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+  longitude: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+  },
 }, {
   tableName: 'recolectores',
   timestamps: false
@@ -196,7 +218,7 @@ const NotificacionConsejo = sequelize.define('notificaciones_consejos', {
     primaryKey: true
   },
   texto: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(150),
     allowNull: false
   }
 }, {
@@ -210,7 +232,7 @@ const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
     primaryKey: true
   },
   texto: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING(150),
     allowNull: false
   }
 }, {
@@ -219,20 +241,28 @@ const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
 });
 
 // Relaciones
-Restaurante.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+// Relación entre Usuario y Restaurante
 Usuario.hasOne(Restaurante, { foreignKey: 'usuarios_id' });
-Recolector.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+Restaurante.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+
+// Relación entre Usuario y Recolector
 Usuario.hasOne(Recolector, { foreignKey: 'usuarios_id' });
+Recolector.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+
+// Relación entre Restaurante y Recolección
 Restaurante.hasMany(Recoleccion, { foreignKey: 'restaurantes_id' });
 Recoleccion.belongsTo(Restaurante, { foreignKey: 'restaurantes_id' });
+
+// Relación entre Recolector y Recolección
 Recolector.hasMany(Recoleccion, { foreignKey: 'recolectores_id' });
 Recoleccion.belongsTo(Recolector, { foreignKey: 'recolectores_id' });
+
 
 // Sincronizar la base de datos
 async function sync() {
   try {
-    await sequelize.sync({ force: false
-     }); // No eliminar las tablas en cada sincronización
+    await sequelize.sync({ force: false}); // No eliminar las tablas en cada sincronización
+    sequelize.sync({ alter: true });
     console.log("Base de datos sincronizada.");
   } catch (e) {
     console.error("La BD no se pudo actualizar.");
@@ -263,24 +293,24 @@ function generarToken(usuario) {
 }
 
 // Middleware para verificar el token JWT
-async function verificarToken(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) {
-    return res.status(403).send('Se requiere un token');
-  }
-  try {
-    const tokenSolo = token.split(' ')[1]; // Obtener solo el token después de 'Bearer'
-    const tokenRevocado = await TokenRevocado.findOne({ where: { token: tokenSolo } });
-    if (tokenRevocado) {
-      return res.status(401).send('Token inválido o revocado');
-    }
-    const decodificado = jwt.verify(tokenSolo, process.env.JWT_SECRET);
-    req.usuario = decodificado;
-    next();
-  } catch (error) {
-    return res.status(401).send('Token inválido');
-  }
+function verificarToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.status(401).json({ error: 'Token no proporcionado' });
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+          if (err.name === 'TokenExpiredError') {
+              return res.status(403).json({ error: 'Token expirado. Por favor, inicia sesión nuevamente.' });
+          }
+          console.error('Error al verificar el token:', err);
+          return res.status(403).json({ error: 'Token inválido' });
+      }
+      req.user = user; // Asegúrate de que el token contenga la información necesaria
+      next();
+  });
 }
+
 
 // Ruta para login
 app.post('/login', async (req, res) => {
@@ -392,7 +422,7 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
       }, { transaction: t });
     });
 
-    res.send('Usuario recolector registrado correctamente');
+    alert('Usuario recolector registrado correctamente');
   } catch (error) {
     console.error('Error al registrar usuario recolector', error);
     res.status(500).send('Error interno del servidor');
@@ -425,7 +455,7 @@ async function obtenerCoordenadas(direccion) {
     }
 }
 
-app.post('/solicitar-recoleccion', async (req, res) => {
+app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
   console.log("Datos recibidos en la solicitud:", req.body);
   const { direccion, restaurantes_id } = req.body;
   console.log("Dirección recibida:", direccion);
@@ -482,13 +512,37 @@ app.get('/solicitudes-pendientes', async (req, res) => {
   }
 });
 
-//El recolector acepta la solicitud
-app.post('/aceptar-recoleccion', async (req, res) => {
-  const { recoleccion_id } = req.body;
-  const recolectorId = req.user.id; // Obtén el ID del recolector desde el token de autenticación
+// Middleware para verificar si el usuario es recolector
+async function verificarRecolector(req, res, next) {
+  const recolectorId = req.user.id; // Obtener ID del recolector del token
 
   try {
-    // Encuentra la solicitud de recolección
+      const recolector = await Recolector.findOne({ where: { usuarios_id: recolectorId } });
+      if (!recolector) {
+          return res.status(403).json({ error: 'No autorizado como recolector' });
+      }
+      req.recolector = recolector;
+      next();
+  } catch (error) {
+      console.error('Error al verificar el recolector:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// Ruta para aceptar la recolección
+app.post('/aceptar-recoleccion', verificarToken, verificarRecolector, async (req, res) => {
+  const { recoleccion_id } = req.body;
+  if (!recoleccion_id) {
+    return res.status(400).json({ error: 'ID de recolección es requerido' });
+  }
+
+  const recolectorId = req.recolector.id; // Obtén el ID del recolector desde req.recolector
+  if (!recolectorId) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+    // Encuentra la recolección por su ID
     const recoleccion = await Recoleccion.findByPk(recoleccion_id);
     
     if (!recoleccion) {
@@ -499,13 +553,19 @@ app.post('/aceptar-recoleccion', async (req, res) => {
       return res.status(400).json({ error: 'La solicitud ya está en proceso o completada' });
     }
 
-    // Actualiza el estado de la solicitud y asigna el recolector
+    // Actualiza el estado de la recolección y asigna el recolector
     await recoleccion.update({
       estado: 'en proceso',
       recolectores_id: recolectorId
     });
 
-    // Enviar una respuesta al cliente
+    // Emitir evento de actualización si se está usando Websockets
+    io.emit('recoleccion-actualizada', {
+      id: recoleccion_id,
+      estado: 'en proceso',
+      recolector: recolectorId
+    });
+
     res.json({ message: 'Solicitud aceptada y en proceso' });
   } catch (error) {
     console.error('Error al aceptar la recolección:', error);
@@ -513,16 +573,115 @@ app.post('/aceptar-recoleccion', async (req, res) => {
   }
 });
 
+app.post('/actualizar-ubicacion-recolector', verificarToken, async (req, res) => {
+  const { latitude, longitude } = req.body;
+  const recolectorId = req.recolector.id; // Obtén el ID del recolector desde req.recolector
+
+  if (!recolectorId) {
+      return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+      // Actualiza la ubicación del recolector en la base de datos
+      await UbicacionRecolector.upsert({
+          recolector_id: recolectorId,
+          latitude,
+          longitude
+      });
+
+      res.json({ message: 'Ubicación actualizada correctamente' });
+  } catch (error) {
+      console.error('Error al actualizar ubicación:', error);
+      res.status(500).json({ error: 'Error al actualizar ubicación' });
+  }
+});
+
+// Ruta para obtener solicitudes de recolección aceptadas
+app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (req, res) => {
+  try {
+    const solicitudesAceptadas = await Recoleccion.findAll({
+      where: {
+        recolectores_id: req.recolector.id,  // Filtra por el recolector que aceptó la solicitud
+        estado: 'en proceso'  // Cambia a 'completado' si necesitas ambas
+      },
+      include: [{
+        model: Restaurante,
+        attributes: ['latitude', 'longitude', 'direccion'],
+      }],
+    });
+
+    if (solicitudesAceptadas.length === 0) {
+      return res.status(404).json({ message: 'No hay solicitudes aceptadas' });
+    }
+
+    res.json(solicitudesAceptadas);
+  } catch (error) {
+    console.error('Error al obtener solicitudes aceptadas:', error);
+    res.status(500).json({ error: 'Ocurrió un error al obtener las solicitudes aceptadas' });
+  }
+});
+
+// Datos de ubicación de ejemplo
+const ubicacionRecolector = {
+    latitude: 19.4326,
+    longitude: -99.1332
+};
+
+io.on('connection', ws => {
+    console.log('Cliente conectado');
+    
+    // Enviar la ubicación del recolector a todos los clientes conectados
+    setInterval(() => {
+        // Puedes obtener la ubicación en tiempo real aquí
+        ws.send(JSON.stringify(ubicacionRecolector));
+    }, 5000); // Enviar cada 5 segundos
+});
+
 //ruta notificaciones
 app.get('/notificaciones', async (req, res) => {
   try {
-      const result = await sequelize.query('SELECT texto FROM notificaciones_consejos');
-      res.json(result.rows.length > 0 ? result.rows : []);  // Envía un array vacío si no hay resultados
+    const result = await sequelize.query('SELECT texto FROM notificaciones_consejos', { type: sequelize.QueryTypes.SELECT });
+    res.json(result.length > 0 ? result : []);  // Envía un array vacío si no hay resultados
   } catch (error) {
-      console.error('Error al obtener notificaciones:', error);
-      res.status(500).json({ error: 'Error en el servidor' });
+    console.error('Error al obtener notificaciones:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
+
+app.get('/mensaje-recoleccion', async (req, res) => {
+  try {
+    // Obtener el mensaje con id = 1
+    const mensaje = await MensajeRecoleccion.findOne({ where: { id: 1 } });
+
+    if (!mensaje) {
+      return res.status(404).json({ error: "Mensaje no encontrado" });
+    }
+
+    res.json({ success: true, mensaje: mensaje.texto });
+  } catch (error) {
+    console.error('Error al obtener el mensaje de recolección:', error);
+    res.status(500).json({ error: 'Error al obtener el mensaje de recolección' });
+  }
+});
+
+app.get('/consejo-aleatorio', async (req, res) => {
+  try {
+    const [consejo] = await sequelize.query(
+      'SELECT texto FROM notificaciones_consejos ORDER BY RAND() LIMIT 1',
+      { type: sequelize.QueryTypes.SELECT }
+    );
+
+    if (consejo) {
+      res.json({ success: true, texto: consejo.texto });
+    } else {
+      res.json({ success: false, message: 'No hay consejos disponibles.' });
+    }
+  } catch (error) {
+    console.error('Error al obtener un consejo aleatorio:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
 
 app.get('/usuarios', async (req, res) => {
   try {
@@ -537,15 +696,15 @@ app.get('/usuarios', async (req, res) => {
 
 // Ruta para cerrar sesión
 app.post('/logout', (req, res) => {
-  // Destruir la sesión del usuario
   req.session.destroy((err) => {
-      if (err) {
-          console.error('Error al destruir la sesión:', err);
-          return res.status(500).json({ error: 'Error al cerrar sesión' });
-      }
-      res.status(200).json({ message: 'Sesión cerrada correctamente' });
+    if (err) {
+      console.error('Error al destruir la sesión:', err);
+      return res.status(500).json({ error: 'Error al cerrar sesión' });
+    }
+    res.redirect('/'); // Redirige al usuario a la página de login u otra página
   });
 });
+
 
 app.listen(process.env.PORT_SERVER, function () {
   console.log("Servidor en el puerto " + process.env.PORT_SERVER);

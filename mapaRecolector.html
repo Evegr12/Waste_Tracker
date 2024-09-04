@@ -13,11 +13,9 @@
 </head>
 <body>
     <div id="map"></div>
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-
-        // Tu token de Mapbox
-        const mapboxAccessToken = 'pk.eyJ1IjoiZXZlZWwxMiIsImEiOiJjbTA3MGk4MzkwOThhMmtweWR6bXIzN243In0.383L_pn-MRKDck06J7jktw';
         // Inicializa el mapa
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
 
@@ -32,25 +30,27 @@
             .then(data => {
                 data.forEach(request => {
                     if (request.restaurante.latitude && request.restaurante.longitude) {
-                        L.marker([request.restaurante.latitude, request.restaurante.longitude])
+                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude])
                             .addTo(map)
-                            .bindPopup(`<b>Solicitud ID:</b> ${request.id}<br><b>Dirección:</b> ${request.restaurante.direccion}`);
+                            .bindPopup(`<b>Solicitud ID:</b> ${request.id}<br><b>Dirección:</b> ${request.restaurante.direccion}<br><button onclick="aceptarRecoleccion(${request.id})">Aceptar Recolección</button>`);
                     }
                 });
             })
             .catch(error => console.error('Error fetching requests:', error));
-    </script>
 
-    <button id="aceptar-recoleccion" data-recoleccion-id="ID_DE_LA_RECOLECCION">Aceptar Recolección</button>
+            function aceptarRecoleccion(recoleccionId) {
+            const authToken = localStorage.getItem('token'); // Obtener el token de localStorage
 
-    <script>
-        document.getElementById('aceptar-recoleccion').addEventListener('click', function() {
-        const recoleccionId = this.getAttribute('data-recoleccion-id');
+            if (!authToken) {
+                alert('No estás autenticado. Por favor, inicia sesión.');
+                return;
+            }
 
             fetch('/aceptar-recoleccion', {
                 method: 'POST',
                 headers: {
-                'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({ recoleccion_id: recoleccionId })
             })
@@ -67,15 +67,10 @@
                 console.error('Error al aceptar la recolección:', error);
                 alert('Hubo un error al aceptar la recolección. Por favor, intenta de nuevo.');
             });
+        }
 
 
-            if (!req.user) {
-                return res.status(401).json({ message: 'Usuario no autenticado.' });
-            }
-            const recolectorId = req.user.id;
-
-        });
     </script>
-
 </body>
 </html>
+

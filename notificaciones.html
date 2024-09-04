@@ -4,69 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="notificaciones.css">
-    <title>Document</title>
+    <title>Waste Tracker - Notificaciones</title>
 </head>
 <body>
     <header>
         <div class="logo">
-            <a href="inicioRestaurante.html"><img src="logoWT.png" alt="Waste Tracker"></a>
+            <a href="inicioRestaurante.html">
+                <img src="logoWT.png" alt="Waste Tracker">
+            </a>
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones" href="notificaciones.html"></a>
+            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones"></a>
             <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
             <a href="perfilRestaurante.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
 
-    <div class="notifications">
-        <h2>Notificaciones</h2>
-        <div class="notification">
-            <p class="message">Recolección finalizada con éxito!</p>
-            <div class="datetime">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">15:40</span>
-            </div>
+    <main>
+        <div class="notifications">
+            <h2>Notificaciones</h2>
+            <!-- Aquí se agregarán las notificaciones dinámicamente -->
         </div>
-        <div class="notification">
-            <p class="message">El conductor está cerca</p>
-            <div class="datetime">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">15:22</span>
-            </div>
-        </div>
-        <div class="notification">
-            <p class="message">¿Ya separaste tus residuos?</p>
-            <div class="datetime">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">14:00</span>
-            </div>
-        </div>
-
-        <!--bloque script directo -->
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                fetch('/notificaciones')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error en la solicitud: ' + response.statusText);
-                    }
-                    return response.json(); // <-- Asegúrate de que la respuesta es JSON
-                })
-                .then(data => {
-                    const notificationContainer = document.querySelector('.notifications');
-                    data.forEach(notificacion => {
-                        const notificationItem = document.createElement('div');
-                        notificationItem.classList.add('notification-item');
-                        notificationItem.innerHTML = `<p>${notificacion.texto}</p>`;
-                        notificationContainer.appendChild(notificationItem);
-                    });
-                })
-                .catch(error => console.error('Error fetching notificaciones:', error));
-            });
-
-        </script>
-    </div>
+    </main>
 
     <footer>
         <nav class="footer-nav">
@@ -77,5 +37,60 @@
         </nav>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+    const initialNotificationDelay = 10000; // 10,000 ms = 10 segundos
+
+    // Función para mostrar una notificación en la interfaz
+    function mostrarNotificacion(texto) {
+        const notificationContainer = document.querySelector('.notifications');
+        const notificationItem = document.createElement('div');
+        notificationItem.classList.add('notification');
+        notificationItem.innerHTML = `
+            <p class="message">${texto}</p>
+            <div class="datetime">
+                <span class="date">Fecha no especificada</span>
+                <span class="time">Hora no especificada</span>
+            </div>
+        `;
+        notificationContainer.appendChild(notificationItem);
+    }
+
+    // Función para obtener el mensaje de recolección
+    function obtenerMensajeRecoleccion() {
+        fetch('/mensaje-recoleccion')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Mensaje de recolección:', data); // Añadir log para ver la respuesta
+                if (data.success) {
+                    mostrarNotificacion(data.mensaje);
+                    localStorage.setItem('recoleccion_mostrado', 'true');
+                } else {
+                    console.error('Error en el servidor:', data.error);
+                }
+            })
+            .catch(error => console.error('Error fetching mensaje de recolección:', error));
+    }
+
+    // Configurar temporizador para mostrar un consejo cada cierto tiempo (por ejemplo, cada 4 horas)
+    function iniciarTemporizadorConsejo() {
+        setInterval(fetchConsejoAleatorio, 4 * 60 * 60 * 1000); // 4 horas en milisegundos
+        fetchConsejoAleatorio(); // Mostrar el primer consejo inmediatamente
+    }
+
+    // Verificar si ya se mostró el mensaje de recolección
+    if (!localStorage.getItem('recoleccion_mostrado')) {
+        obtenerMensajeRecoleccion();
+    }
+
+    iniciarTemporizadorConsejo();
+});
+
+    </script>
 </body>
 </html>
