@@ -96,8 +96,8 @@ nav img:hover {
 }
 
 .restaurant-info img {
-    width: 100%;
-    height: 100%;
+    width: 250px;
+    height: 200px;
     border-radius: 50%;
     object-fit: cover;
 }
@@ -107,7 +107,7 @@ nav img:hover {
     top: 70%;
     left: 65%;
     transform: translate(-50%, -50%); /* Centra la imagen de perfil */
-    width: 80px; /* Ajusta el tamaño según sea necesario */
+    width: 100px; /* Ajusta el tamaño según sea necesario */
     height: auto;
     border-radius: 70%;
     border: 2px solid white; /* Opcional: Añade un borde blanco para resaltar la imagen de perfil */
@@ -124,6 +124,7 @@ nav img:hover {
     display: flex;
     flex-direction: column;
     align-items: center; /* Centra los elementos horizontalmente */
+    align-content: center;
     position: relative;
     font-size: 18px;
     color: #333;

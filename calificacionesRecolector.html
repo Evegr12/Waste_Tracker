@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="inicioRecolector.css">
+    <link rel="stylesheet" href="calificaciones.css">
+    <title>Mis calificaciones</title>
 </head>
 <body>
     <header>
@@ -17,11 +17,20 @@
         </nav>
     </header>
     
-    <main>
-        <a href="inicioRecolector.html"><img src="img_inicioRecolector.png" alt="Imagen-página-principal"></a><br>
-        <a href="mapaRecolector.html"><img class="mapa" src="ubi-icon.png" alt="Mapa"></a>
-        <a href="calificacionesRecolector.html"><img class="calificaciones" src="califi-icon.png" alt="Calificar"></a>
-    </main>
+    <div class="rating-card">
+        <h3>Mis calificaciones</h3>
+        <div class="user-info">
+            <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
+            <span class="user-name">King Fish</span>
+        </div>
+        <div class="rating">
+            <span class="star" data-value="1">&#9733;</span>
+            <span class="star" data-value="2">&#9733;</span>
+            <span class="star" data-value="3">&#9733;</span>
+            <span class="star" data-value="4">&#9733;</span>
+            <span class="star" data-value="5">&#9733;</span>
+        </div>
+    </div>
 
     <footer>
         <nav class="footer-nav">
@@ -29,5 +38,6 @@
             <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </footer>
+
 </body>
 </html>

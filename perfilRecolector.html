@@ -9,13 +9,11 @@
 <body>
     <header>
         <div class="logo">
-            <a href="inicioRestaurante.html"><img src="logoWT.png" alt="Waste Tracker"></a>
+            <a href="inicioRecolector.html"><img src="logoWT.png" alt="Waste Tracker"></a>
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones" href="notificaciones.html"></a>
-            <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
-            <a href="perfilRestaurante.html"><img src="perfil-icon.png" alt="Perfil"></a>
+            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones" href="notificacionesRecolector.html"></a>
         </nav>
     </header>
 
@@ -29,15 +27,15 @@
             </label>
             <input type="file" id="cargar-foto-perfil" style="display: none;" accept="image/*">
             <a href="#"><img src="camara.png" alt="actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil').click();"></a>
-            <div class="restaurant-name">King Fish</div>
+            <div class="restaurant-name">Recolector</div>
         </div>
         <div class="collection-info">
-            <span>33</span> Recolecciones
+            <span>5</span> Recolecciones
         </div>
-        <div class="status">
+        <!--<div class="status">
             <img src="smiley.png" alt="Excellent">
             <p>Excellent</p>
-        </div>
+        </div>-->
         <button class="logout-button" id="logoutButton">Cerrar sesión</button>
         <!-- Formulario para cerrar sesión -->
         <form id="logoutForm" action="/logout" method="POST" style="display:none;">
@@ -46,13 +44,61 @@
 
     <footer>
         <nav class="footer-nav">
-            <a href="inicioRestaurante.html"><img src="home-icon.png" alt="Inicio"></a>
-            <a href="solicitudRecoleccion.html"><img src="bote-icon.png" alt="Bote"></a>
-            <a href="mapa.html"><img src="map-icon.png" alt="Mapa"></a>
-            <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
+            <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </footer>
-    
+
+    <!-- JavaScript para manejo de imagen de perfil -->
+    <script>
+        const cargarFotoPerfil = document.getElementById('cargar-foto-perfil');
+            cargarFotoPerfil.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    // Verifica que el archivo sea una imagen
+                    if (file.type.startsWith('image/')) {
+                        if (file.size > 2 * 1024 * 1024) { // Limite de 2MB
+                            alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const fotoPerfil = document.getElementById('foto-perfil');
+                            if (fotoPerfil) {
+                                fotoPerfil.setAttribute('src', event.target.result); // Muestra la vista previa
+                            }
+                        };
+                        reader.readAsDataURL(file);
+
+                        // Ahora envía la imagen al servidor
+                        const formData = new FormData();
+                        formData.append('fotoPerfil', file); // Nombre del input en el formulario
+                        formData.append('userId', '1'); // Cambia '1' por el ID real del usuario
+
+                        fetch('/upload-photo', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('¡Foto de perfil subida con éxito!');
+                                // Aquí podrías actualizar la URL de la foto de perfil en la interfaz de usuario con la URL del servidor
+                                document.getElementById('foto-perfil').src = data.imageUrl;
+                            } else {
+                                alert('Error al subir la foto de perfil.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error al enviar la imagen:', error);
+                        });
+                    } else {
+                        alert('El archivo seleccionado no es una imagen válida.');
+                    }
+                }
+            });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
     <script src="login.js"></script>
 </body>
