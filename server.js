@@ -428,6 +428,34 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
   }
 });
 
+// Ruta para registro de recolectores
+app.post('/registroRecolector', upload.none(), async (req, res) => {
+  const { usuario, nombre, correo, contrasenia } = req.body;
+  if (!usuario || !nombre || !correo || !contrasenia) {
+    return res.status(400).send('Todos los campos son requeridos');
+  }
+  try {
+    const hashedPassword = await bcrypt.hash(contrasenia, 10);
+    await sequelize.transaction(async (t) => {
+      const newUser = await Usuario.create({
+        usuario,
+        nombre,
+        correo,
+        contrasenia: hashedPassword,
+        tipo_usuario: 'recolector',
+      }, { transaction: t });
+
+      await Recolector.create({
+        usuarios_id: newUser.id
+      }, { transaction: t });
+    });
+    res.send('Usuario recolector registrado correctamente');
+  } catch (error) {
+    console.error('Error al registrar usuario recolector', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
 // Ruta para manejar la subida de fotos de perfil
 app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
   try {
