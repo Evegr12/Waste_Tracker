@@ -99,30 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
-
-    // Cargar imagen de perfil
-    cargarFotoPerfil.addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            // Verifica que el archivo sea una imagen
-            if (file.type.startsWith('image/')) {
-                if (file.size > 2 * 1024 * 1024) { // Limite de 2MB
-                    alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const fotoPerfil = document.getElementById('foto-perfil');
-                    if (fotoPerfil) {
-                        fotoPerfil.setAttribute('src', event.target.result);
-                    }
-                };
-                reader.readAsDataURL(file);
-            } else {
-                alert('El archivo seleccionado no es una imagen válida.');
-            }
-        }
-    });    
+        
 
     // Registro Recolector
     const formRegistroRecolector = document.getElementById('formRegistroRecolector');

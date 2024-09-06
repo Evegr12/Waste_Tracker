@@ -1,70 +1,37 @@
-<!--<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Ruta hacia la Recolección</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="map" style="height: 600px;"></div>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        // Obtener el ID de la recolección desde los parámetros de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const recoleccionId = urlParams.get('recoleccion_id');
-
-        // Obtener las coordenadas desde el servidor (ejemplo)
-        fetch(`/ruta?recoleccion_id=${recoleccionId}`)
-            .then(response => response.json())
-            .then(data => {
-                const recolectorLat = data.recolector_lat;
-                const recolectorLng = data.recolector_lng;
-                const restauranteLat = data.restaurante_lat;
-                const restauranteLng = data.restaurante_lng;
-
-                // Crear el mapa y agregar la ruta
-                const map = L.map('map').setView([recolectorLat, recolectorLng], 13);
-
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19
-                }).addTo(map);
-
-                L.marker([recolectorLat, recolectorLng]).addTo(map)
-                    .bindPopup('Ubicación actual del recolector')
-                    .openPopup();
-
-                L.marker([restauranteLat, restauranteLng]).addTo(map)
-                    .bindPopup('Restaurante')
-                    .openPopup();
-
-                L.polyline([
-                    [recolectorLat, recolectorLng],
-                    [restauranteLat, restauranteLng]
-                ], { color: 'blue' }).addTo(map);
-            });
-    </script>
-</body>
-</html>
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Mapa de Rutas de Recolección Aceptadas</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="mapa.css">
     <style>
         #map {
-            height: 600px;
+            height: 700px;
             width: 100%;
         }
     </style>
 </head>
 <body>
+    <header>
+        <div class="logo">
+            <a href="inicioRestaurante.html"><img src="logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <a href="notificaciones.html" aria-label="Notificaciones"><img src="notificaciones.png" alt="Notificaciones"></a>
+            <a href="historial.html" aria-label="Historial"><img src="historial-icon.png" alt="Historial"></a>
+            <a href="perfilRestaurante.html" aria-label="Perfil"><img src="perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <center><h1>Solicitudes aceptadas</h1></center>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="/socket.io/socket.io.js"></script>  <!-- Asegúrate de cargar socket.io -->
+
     <script>
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
 
@@ -72,17 +39,95 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Conéctate al servidor WebSocket
-        const socket = new WebSocket('ws://localhost:8085');
+        const recolectorMarkers = {}; // Objeto para almacenar los marcadores de los recolectores
 
-        socket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            const ubicacionRecolector = L.latLng(data.latitude, data.longitude);
-            
-            // Actualiza la ubicación del recolector en el mapa
-            L.marker(ubicacionRecolector).addTo(map);
-        };
+        // Mostrar las solicitudes aceptadas en el mapa
+        fetch('/solicitudes-aceptadas', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al obtener las solicitudes aceptadas');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (Array.isArray(data)) {
+                data.forEach(request => {
+                    if (request.restaurante.latitude && request.restaurante.longitude) {
+                        const popupContent = `<b>Restaurante:</b> ${request.restaurante.nombre}<br>
+                                              <b>Dirección:</b> ${request.restaurante.direccion}`;
+
+                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude])
+                            .addTo(map)
+                            .bindPopup(popupContent);
+
+                        // Si tienes que mostrar rutas, puedes usar Leaflet Routing Machine aquí
+                        L.Routing.control({
+                            waypoints: [
+                                L.latLng(recolectorMarkers.latitude, recolectorMarkers.longitude),
+                                L.latLng(request.restaurante.latitude, request.restaurante.longitude)
+                            ]
+                        }).addTo(map);
+                    }
+                });
+            } else {
+                console.error('Respuesta inesperada:', data);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching requests:', error);
+        });
+
+        const socket = io();
+        
+        // Actualizar ubicación del recolector en tiempo real
+        socket.on('actualizarUbicacionRecolector', (data) => {
+            const { latitude, longitude, recolectorId } = data;
+
+            // Si ya existe el marcador del recolector, actualizar su posición
+            if (recolectorMarkers[recolectorId]) {
+                recolectorMarkers[recolectorId].setLatLng([latitude, longitude]);
+            } else {
+                // Si no existe, crear un nuevo marcador
+                const marker = L.marker([latitude, longitude])
+                    .addTo(map)
+                    .bindPopup(`<b>Recolector ID:</b> ${recolectorId}`);
+                
+                recolectorMarkers[recolectorId] = marker;
+            }
+        });
+
+        // Enviar la ubicación del recolector al servidor en tiempo real
+        navigator.geolocation.watchPosition((position) => {
+            const { latitude, longitude } = position.coords;
+
+            socket.emit('ubicacionRecolector', {
+                recolectorId: obtenerIdRecolector(),
+                latitude,
+                longitude
+            });
+
+            // Actualiza la ruta si el recolector cambia de posición
+            L.Routing.control({
+                waypoints: [
+                    L.latLng(latitude, longitude),
+                    L.latLng(request.restaurante.latitude, request.restaurante.longitude)
+                ]
+            }).addTo(map);
+        }); 
     </script>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="inicioRestaurante.html" aria-label="Inicio"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="solicitudRecoleccion.html" aria-label="Solicitud Recolección"><img src="bote-icon.png" alt="Bote"></a>
+            <a href="mapa.html" aria-label="Mapa"><img src="map-icon.png" alt="Mapa"></a>
+            <a href="calificaciones.html" aria-label="Calificaciones"><img src="calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+    <script src="/socket.io/socket.io.js"></script>
 </body>
 </html>
-

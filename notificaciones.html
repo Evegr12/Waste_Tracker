@@ -39,58 +39,81 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-    const initialNotificationDelay = 10000; // 10,000 ms = 10 segundos
+            const notificacion = localStorage.getItem('notificacionRecoleccion');
+            if (notificacion) {
+                mostrarNotificacion(notificacion);  // Mostrar la notificación almacenada
+            } else {
+                console.log('No hay notificaciones nuevas');
+            }
+        });
 
-    // Función para mostrar una notificación en la interfaz
-    function mostrarNotificacion(texto) {
-        const notificationContainer = document.querySelector('.notifications');
-        const notificationItem = document.createElement('div');
-        notificationItem.classList.add('notification');
-        notificationItem.innerHTML = `
-            <p class="message">${texto}</p>
-            <div class="datetime">
-                <span class="date">Fecha no especificada</span>
-                <span class="time">Hora no especificada</span>
-            </div>
-        `;
-        notificationContainer.appendChild(notificationItem);
-    }
+        function mostrarNotificacionesAcciones(mensajes) {
+            const notificationContainer = document.querySelector('.notifications');
+            mensajes.forEach(mensaje => {
+                const notificationItem = document.createElement('div');
+                notificationItem.classList.add('notification');
+                notificationItem.innerHTML = `
+                <p class="message">${mensaje.texto}</p>
+                <div class="datetime">
+                    <span class="date">Fecha no especificada</span>
+                    <span class="time">Hora no especificada</span>
+                </div>
+                `;
+                notificationContainer.appendChild(notificationItem);
+            });
+            }
 
-    // Función para obtener el mensaje de recolección
-    function obtenerMensajeRecoleccion() {
-        fetch('/mensaje-recoleccion')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.status);
+        function obtenerMensajesRecoleccion() {
+            fetch('/mensajes-recoleccion', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
-                return response.json();
             })
+            .then(response => response.json())
             .then(data => {
-                console.log('Mensaje de recolección:', data); // Añadir log para ver la respuesta
                 if (data.success) {
-                    mostrarNotificacion(data.mensaje);
-                    localStorage.setItem('recoleccion_mostrado', 'true');
+                    mostrarNotificacionesAcciones(data.mensajes);
                 } else {
                     console.error('Error en el servidor:', data.error);
                 }
             })
-            .catch(error => console.error('Error fetching mensaje de recolección:', error));
-    }
+            .catch(error => console.error('Error fetching mensajes de recolección:', error));
+        }
 
-    // Configurar temporizador para mostrar un consejo cada cierto tiempo (por ejemplo, cada 4 horas)
-    function iniciarTemporizadorConsejo() {
-        setInterval(fetchConsejoAleatorio, 4 * 60 * 60 * 1000); // 4 horas en milisegundos
-        fetchConsejoAleatorio(); // Mostrar el primer consejo inmediatamente
-    }
+        function mostrarNotificacionConsejo(consejo) {
+            const consejoContainer = document.querySelector('.consejo-notification');
+            consejoContainer.innerHTML = `
+                <div class="notification">
+                <p class="message">${consejo}</p>
+                </div>
+            `;
+            }
 
-    // Verificar si ya se mostró el mensaje de recolección
-    if (!localStorage.getItem('recoleccion_mostrado')) {
-        obtenerMensajeRecoleccion();
-    }
+        function obtenerConsejoAleatorio() {
+            fetch('/notificacion-consejo', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                mostrarNotificacionConsejo(data.consejo);
+                } else {
+                console.error('Error en el servidor:', data.error);
+                }
+            })
+            .catch(error => console.error('Error fetching consejo:', error));
+        }
 
-    iniciarTemporizadorConsejo();
-});
+        // Llamar al obtener consejos al iniciar sesión o al cargar la página
+        obtenerConsejoAleatorio();
 
+        // Llamar a obtener notificaciones de acciones cuando el restaurante realiza una acción o necesita revisar sus notificaciones
+        obtenerMensajesRecoleccion();
     </script>
 </body>
 </html>
+

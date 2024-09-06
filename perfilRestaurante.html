@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="stylesperfilRes.css">
-    <title>Document</title>
+    <title>Perfil del Restaurante</title>
 </head>
 <body>
     <header>
@@ -13,7 +13,7 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones" href="notificaciones.html"></a>
+            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones"></a>
             <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
             <a href="perfilRestaurante.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
@@ -24,19 +24,20 @@
             <h2>Mi restaurante</h2>
         </div>
         <div class="restaurant-info">
-            <label for="profileImageUpload">
+            <!-- Imagen de perfil y campo de subida de archivo -->
+            <label for="cargar-foto-perfil">
                 <img src="kingfish.png" alt="King Fish" id="foto-perfil">
             </label>
             <input type="file" id="cargar-foto-perfil" style="display: none;" accept="image/*">
-            <a href="#"><img src="camara.png" alt="actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil').click();"></a>
+            <a href="#"><img src="camara.png" alt="Actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil').click();"></a>
             <div class="restaurant-name">King Fish</div>
         </div>
         <div class="collection-info">
             <span>33</span> Recolecciones
         </div>
         <div class="status">
-            <img src="smiley.png" alt="Excellent">
-            <p>Excellent</p>
+            <img src="smiley.png" alt="Excelente">
+            <p>Excelente</p>
         </div>
         <button class="logout-button" id="logoutButton">Cerrar sesión</button>
         <!-- Formulario para cerrar sesión -->
@@ -52,8 +53,71 @@
             <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
-    
+
+    <!-- JavaScript para manejo de imagen de perfil -->
+    <script>
+        const cargarFotoPerfil = document.getElementById('cargar-foto-perfil');
+            cargarFotoPerfil.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    // Verifica que el archivo sea una imagen
+                    if (file.type.startsWith('image/')) {
+                        if (file.size > 2 * 1024 * 1024) { // Limite de 2MB
+                            alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const fotoPerfil = document.getElementById('foto-perfil');
+                            if (fotoPerfil) {
+                                fotoPerfil.setAttribute('src', event.target.result); // Muestra la vista previa
+                            }
+                        };
+                        reader.readAsDataURL(file);
+
+                        // Ahora envía la imagen al servidor
+                        const formData = new FormData();
+                        formData.append('fotoPerfil', file); // Nombre del input en el formulario
+                        formData.append('userId', '1'); // Cambia '1' por el ID real del usuario
+
+                        fetch('/upload-photo', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('¡Foto de perfil subida con éxito!');
+                                // Aquí podrías actualizar la URL de la foto de perfil en la interfaz de usuario con la URL del servidor
+                                document.getElementById('foto-perfil').src = data.imageUrl;
+                            } else {
+                                alert('Error al subir la foto de perfil.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error al enviar la imagen:', error);
+                        });
+                    } else {
+                        alert('El archivo seleccionado no es una imagen válida.');
+                    }
+                }
+            });
+
+
+             // Confirmación de cierre de sesión
+            const logoutButton = document.getElementById('logoutButton');
+                if (logoutButton) {
+                    logoutButton.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        const logoutForm = document.getElementById('logoutForm');
+                        if (logoutForm && confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                            logoutForm.submit();
+                        } else {
+                            console.error('El formulario de cierre de sesión "logoutForm" no se encontró.');
+                        }
+                    });
+                }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
-    <script src="login.js"></script>
 </body>
 </html>

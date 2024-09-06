@@ -5,11 +5,31 @@ const cors = require('cors');
 const multer = require('multer');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs'); // Importa el módulo 'fs' para trabajar con el sistema de archivos
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');  
 const app = express();
 const Nominatim = require('nominatim-client');
+
+// Verifica si la carpeta 'uploads' existe, si no, la crea
+const uploadDir = path.join(__dirname, 'uploads'); // Define la ruta de la carpeta 'uploads'
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir); // Crea la carpeta si no existe
+}
+
+// Configuración de almacenamiento de multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir); // Usa la ruta definida anteriormente
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Nombre único del archivo
+  }
+});
+
+const upload = multer({ storage: storage });
+
 const nominatim = Nominatim.createClient({
   useragent: "MyApp",             
   referer: 'http://example.com', 
@@ -20,8 +40,17 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 // Configura el manejo de eventos de Socket.io
+// Escuchar la conexión de WebSockets
 io.on('connection', (socket) => {
   console.log('Nuevo cliente conectado');
+
+  // Escuchar cuando el recolector envía su ubicación
+  socket.on('ubicacionRecolector', (data) => {
+    // Emitir la nueva ubicación a todos los clientes conectados
+    io.emit('actualizarUbicacionRecolector', data);
+  });
+
+  // Escuchar cuando el cliente se desconecta
   socket.on('disconnect', () => {
     console.log('Cliente desconectado');
   });
@@ -41,7 +70,6 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
-const upload = multer();
 app.use(session({
   secret: 'Dellevesecret', // Clave secreta
   resave: true,
@@ -102,6 +130,10 @@ const Usuario = sequelize.define('usuarios', {
   tipo_usuario: {
     type: DataTypes.STRING(45),
     allowNull: false
+  },
+  fotoPerfil: {
+    type: DataTypes.STRING, //Aquí se almacenará la URL de la imagen
+    allowNull: true,
   }
 }, {
   tableName: 'usuarios',
@@ -362,7 +394,6 @@ app.get('/inicioRecolector', function (req, res) {
   res.sendFile(path.join(__dirname, 'inicioRecolector.html'));
 });
 
-
 // Ruta para registro de restaurante
 app.post('/registroRestaurante', upload.none(), async (req, res) => {
   const { usuario, nombre, correo, nombre_restaurante, direccion, contrasenia } = req.body;
@@ -397,37 +428,37 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
   }
 });
 
-// Ruta para registro de recolectores
-app.post('/registroRecolector', upload.none(), async (req, res) => {
-  const { usuario, nombre, correo, contrasenia } = req.body;
-
-  if (!usuario || !nombre || !correo || !contrasenia) {
-    return res.status(400).send('Todos los campos son requeridos');
-  }
-
+// Ruta para manejar la subida de fotos de perfil
+app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
   try {
-    const hashedPassword = await bcrypt.hash(contrasenia, 10);
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No se subió ningún archivo.' });
+    }
 
-    await sequelize.transaction(async (t) => {
-      const newUser = await Usuario.create({
-        usuario,
-        nombre,
-        correo,
-        contrasenia: hashedPassword,
-        tipo_usuario: 'recolector',
-      }, { transaction: t });
+    const imageUrl = `/uploads/${req.file.filename}`; // Ruta relativa de la imagen
+    const userId = req.body.userId; // Suponiendo que el ID del usuario se envía en el cuerpo de la solicitud
 
-      await Recolector.create({
-        usuarios_id: newUser.id
-      }, { transaction: t });
-    });
+    // Actualiza la URL de la foto de perfil en la base de datos usando Sequelize
+    const usuario = await Usuario.findByPk(userId); // Obtén el usuario por su ID
 
-    alert('Usuario recolector registrado correctamente');
+    if (!usuario) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+    }
+
+    // Actualiza el campo de foto de perfil
+    usuario.fotoPerfil = imageUrl;
+    await usuario.save();
+
+    res.json({ success: true, message: 'Foto de perfil subida con éxito.', imageUrl });
+
   } catch (error) {
-    console.error('Error al registrar usuario recolector', error);
-    res.status(500).send('Error interno del servidor');
+    console.error('Error al guardar la URL de la imagen en la base de datos:', error);
+    res.status(500).json({ success: false, message: 'Error al guardar la imagen.' });
   }
 });
+
+// Servir las imágenes estáticas desde la carpeta 'uploads'
+app.use('/uploads', express.static(uploadDir));
 
 // Función para obtener las coordenadas a partir de la dirección
 async function obtenerCoordenadas(direccion) {
@@ -482,6 +513,7 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
 
     // Enviar una respuesta al cliente
     res.json({ message: "Solicitud de recolección enviada correctamente" });
+    //return res.redirect('/mensaje-recoleccion');
   } catch (error) {
     console.error('Error al guardar la solicitud de recolección:', error);
     res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
@@ -596,19 +628,21 @@ app.post('/actualizar-ubicacion-recolector', verificarToken, async (req, res) =>
   }
 });
 
-// Ruta para obtener solicitudes de recolección aceptadas
+//Ruta solicitudes aceptadas por e recolector
 app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (req, res) => {
   try {
+    console.log('Recolector autenticado:', req.recolector);
+
     const solicitudesAceptadas = await Recoleccion.findAll({
       where: {
-        recolectores_id: req.recolector.id,  // Filtra por el recolector que aceptó la solicitud
-        estado: 'en proceso'  // Cambia a 'completado' si necesitas ambas
+        recolectores_id: req.recolector.id,
+        estado: 'en proceso'
       },
       include: [{
         model: Restaurante,
-        attributes: ['latitude', 'longitude', 'direccion'],
+        attributes: ['nombre', 'latitude', 'longitude', 'direccion'],  // Incluye el nombre del restaurante
       }],
-    });
+    });    
 
     if (solicitudesAceptadas.length === 0) {
       return res.status(404).json({ message: 'No hay solicitudes aceptadas' });
@@ -637,14 +671,34 @@ io.on('connection', ws => {
     }, 5000); // Enviar cada 5 segundos
 });
 
-//ruta notificaciones
-app.get('/notificaciones', async (req, res) => {
+// Ruta para que el restaurante califique al recolector
+app.post('/calificar-recolector', async (req, res) => {
+  const { recolectorId, rating } = req.body;
+
   try {
-    const result = await sequelize.query('SELECT texto FROM notificaciones_consejos', { type: sequelize.QueryTypes.SELECT });
-    res.json(result.length > 0 ? result : []);  // Envía un array vacío si no hay resultados
+      if (!recolectorId || !rating) {
+          return res.status(400).json({ success: false, message: 'Faltan datos necesarios' });
+      }
+
+      // Verifica si existe una recolección con el recolectorId y estado 'completado'
+      const recoleccion = await Recoleccion.findOne({
+        where: { recolectores_id: recolectorId, estado: 'completado' }
+      });
+
+      if (!recoleccion) {
+          return res.status(404).json({ success: false, message: 'No se encontró una recolección para calificar o ya está calificada' });
+      }
+
+      // Si existe la recolección, se procede a actualizar la calificación
+      await Recoleccion.update(
+        { calificacion: rating },
+        { where: { id: recoleccion.id } }  // Utilizamos el id de la recolección encontrada
+      );
+
+      res.json({ success: true, message: 'Calificación registrada exitosamente' });
   } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+      console.error('Error al guardar la calificación:', error);
+      res.status(500).json({ success: false, message: 'Error al registrar la calificación' });
   }
 });
 
@@ -664,7 +718,28 @@ app.get('/mensaje-recoleccion', async (req, res) => {
   }
 });
 
-app.get('/consejo-aleatorio', async (req, res) => {
+// Endpoint para obtener los mensajes relacionados con acciones del restaurante
+app.get('/mensajes-recoleccion', async (req, res) => {
+  try {
+    // Obtener todos los mensajes relacionados con recolección de residuos
+    const mensajes = await MensajeRecoleccion.findAll({
+      order: [['id', 'ASC']],  // Obtener mensajes en el orden de las acciones
+    });
+
+    if (!mensajes.length) {
+      return res.status(404).json({ error: "No hay mensajes de recolección disponibles" });
+    }
+
+    // Enviar los mensajes al cliente
+    res.json({ success: true, mensajes });
+  } catch (error) {
+    console.error('Error al obtener los mensajes de recolección:', error);
+    res.status(500).json({ error: 'Error al obtener los mensajes de recolección' });
+  }
+});
+
+
+app.get('/notificacion-consejo', async (req, res) => {
   try {
     const [consejo] = await sequelize.query(
       'SELECT texto FROM notificaciones_consejos ORDER BY RAND() LIMIT 1',
@@ -681,7 +756,6 @@ app.get('/consejo-aleatorio', async (req, res) => {
     res.status(500).json({ error: 'Error en el servidor' });
   }
 });
-
 
 app.get('/usuarios', async (req, res) => {
   try {

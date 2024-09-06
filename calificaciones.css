@@ -121,7 +121,7 @@ h3 {
 }
 
 
-.submit-button {
+.submitRating {
     background-color: #f2eecb;
     border: 1px solid #ddd;
     border-radius: 5px;
@@ -132,7 +132,7 @@ h3 {
     transition: background-color 0.3s;
 }
 
-.submit-button:hover {
+.submitRating:hover {
     background-color: #e5d9a3;
 }
 

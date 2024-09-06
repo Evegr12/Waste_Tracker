@@ -32,51 +32,91 @@
             <span class="star" data-value="4">&#9733;</span>
             <span class="star" data-value="5">&#9733;</span>
         </div>
-        <button class="submit-button">Enviar calificación</button>
+        <button class="submitRating">Enviar calificación</button> <!-- Cambiado el selector del botón -->
     </div>
-    <input type="hidden" id="ratingValue" name="rating" value="">
-    
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const stars = document.querySelectorAll('.star');
+            const submitButton = document.querySelector('.submitRating'); // Cambiado a querySelector para seleccionar por clase
             let selectedValue = 0; // Variable para almacenar la calificación seleccionada
-
-            stars.forEach(star => {
-                star.addEventListener('mouseover', handleMouseOver);
-                star.addEventListener('mouseout', handleMouseOut);
-                star.addEventListener('click', handleClick);
-            });
-
-            function handleMouseOver(event) {
-                const value = event.target.getAttribute('data-value');
-                setRating(value, true); // Muestra la calificación de la estrella sobre la que pasa el ratón
-            }
-
-            function handleMouseOut() {
-                setRating(selectedValue, false); // Restaura la calificación seleccionada
-            }
-
-            function handleClick(event) {
-                selectedValue = event.target.getAttribute('data-value'); // Actualiza la calificación seleccionada
-                setRating(selectedValue, false); // Aplica la calificación seleccionada
-            }
-
-            function setRating(value, isHover) {
+    
+            if (submitButton) { // Verifica que submitButton no sea null
                 stars.forEach(star => {
-                    const starValue = parseInt(star.getAttribute('data-value'));
-                    if (starValue <= value) {
-                        star.classList.add('selected');
-                    } else {
-                        star.classList.remove('selected');
-                    }
-
-                    if (isHover && starValue <= value) {
-                        star.classList.add('hover'); // Aplica el estilo de hover
-                    } else {
-                        star.classList.remove('hover'); // Remueve el estilo de hover
-                    }
+                    star.addEventListener('mouseover', handleMouseOver);
+                    star.addEventListener('mouseout', handleMouseOut);
+                    star.addEventListener('click', handleClick);
                 });
+    
+                function handleMouseOver(event) {
+                    const value = event.target.getAttribute('data-value');
+                    setRating(value, true); // Muestra la calificación de la estrella sobre la que pasa el ratón
+                }
+    
+                function handleMouseOut() {
+                    setRating(selectedValue, false); // Restaura la calificación seleccionada
+                }
+    
+                function handleClick(event) {
+                    selectedValue = event.target.getAttribute('data-value'); // Actualiza la calificación seleccionada
+                    setRating(selectedValue, false); // Aplica la calificación seleccionada
+                    console.log('Calificación seleccionada:', selectedValue); // Verifica que se seleccionó una calificación
+                }
+    
+                function setRating(value, isHover) {
+                    stars.forEach(star => {
+                        const starValue = parseInt(star.getAttribute('data-value'));
+                        if (starValue <= value) {
+                            star.classList.add('selected');
+                        } else {
+                            star.classList.remove('selected');
+                        }
+    
+                        if (isHover && starValue <= value) {
+                            star.classList.add('hover'); // Aplica el estilo de hover
+                        } else {
+                            star.classList.remove('hover'); // Remueve el estilo de hover
+                        }
+                    });
+                }
+    
+                // Función para enviar la calificación al servidor
+                function submitRating() {
+                    if (selectedValue === 0) {
+                        alert('Por favor selecciona una calificación antes de enviar.');
+                        return;
+                    }
+    
+                    // Aquí puedes enviar la calificación al servidor
+                    const recolectorId = 1; // Suponiendo que tienes el ID del recolector
+    
+                    console.log('Enviando calificación:', selectedValue); // Debugging
+    
+                    fetch('/calificar-recolector', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ recolectorId, rating: selectedValue }) // Datos enviados al servidor
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Respuesta del servidor:', data); // Debugging
+                        if (data.success) {
+                            alert('Calificación enviada exitosamente');
+                        } else {
+                            alert('Hubo un problema al enviar la calificación. Inténtalo de nuevo.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al enviar la calificación:', error);
+                        alert('Error al enviar la calificación. Por favor, inténtalo de nuevo.');
+                    });
+                }
+    
+                submitButton.addEventListener('click', submitRating);
+            } else {
+                console.error('No se encontró el botón de enviar calificación con la clase "submitRating".');
             }
         });
     </script>

@@ -4,14 +4,28 @@
     <meta charset="UTF-8">
     <title>Mapa de Solicitudes de Recolección</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="mapa.css">
     <style>
         #map {
-            height: 600px;
+            height: 700px;
             width: 100%;
         }
     </style>
 </head>
 <body>
+    <header>
+        <div class="logo">
+            <a href="inicioRestaurante.html"><img src="logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <a href="notificaciones.html" aria-label="Notificaciones"><img src="notificaciones.png" alt="Notificaciones"></a>
+            <a href="historial.html" aria-label="Historial"><img src="historial-icon.png" alt="Historial"></a>
+            <a href="perfilRestaurante.html" aria-label="Perfil"><img src="perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <center><h1>Solicitudes pendientes</h1></center>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -68,9 +82,17 @@
                 alert('Hubo un error al aceptar la recolección. Por favor, intenta de nuevo.');
             });
         }
-
-
     </script>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="inicioRestaurante.html" aria-label="Inicio"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="solicitudRecoleccion.html" aria-label="Solicitud Recolección"><img src="bote-icon.png" alt="Bote"></a>
+            <a href="mapa.html" aria-label="Mapa"><img src="map-icon.png" alt="Mapa"></a>
+            <a href="calificaciones.html" aria-label="Calificaciones"><img src="calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
 </body>
 </html>
 
