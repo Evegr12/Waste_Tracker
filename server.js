@@ -12,6 +12,12 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const Nominatim = require('nominatim-client');
 
+// Configura EJS como motor de plantillas
+app.set('view engine', 'ejs');
+
+// Configura la carpeta de vistas
+app.set('views', path.join(__dirname, 'views'));
+
 // Verifica si la carpeta 'uploads' existe, si no, la crea
 const uploadDir = path.join(__dirname, 'uploads'); // Define la ruta de la carpeta 'uploads'
 if (!fs.existsSync(uploadDir)) {
@@ -20,43 +26,20 @@ if (!fs.existsSync(uploadDir)) {
 
 // Configuración de almacenamiento de multer
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: (req, file, cb) => {
     cb(null, uploadDir); // Usa la ruta definida anteriormente
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname)); // Nombre único del archivo
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}_${file.originalname}`); // Nombre único del archivo
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 const nominatim = Nominatim.createClient({
   useragent: "MyApp",             
   referer: 'http://example.com', 
 });
-const http = require('http');
-const socketIo = require('socket.io');
-const server = http.createServer(app);
-const io = socketIo(server);
-
-// Configura el manejo de eventos de Socket.io
-// Escuchar la conexión de WebSockets
-io.on('connection', (socket) => {
-  console.log('Nuevo cliente conectado');
-
-  // Escuchar cuando el recolector envía su ubicación
-  socket.on('ubicacionRecolector', (data) => {
-    // Emitir la nueva ubicación a todos los clientes conectados
-    io.emit('actualizarUbicacionRecolector', data);
-  });
-
-  // Escuchar cuando el cliente se desconecta
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado');
-  });
-});
-
-
 
 // Configuración de CORS
 const corsOptions = {
@@ -187,15 +170,7 @@ const Recolector = sequelize.define('recolectores', {
       model: Usuario,
       key: 'id'
     }
-  },
-  latitude: {
-    type: DataTypes.FLOAT,
-    allowNull: true,
-  },
-  longitude: {
-    type: DataTypes.FLOAT,
-    allowNull: true,
-  },
+  }
 }, {
   tableName: 'recolectores',
   timestamps: false
@@ -236,7 +211,7 @@ const Recoleccion = sequelize.define('recolecciones', {
   },
   estado: {
     type: DataTypes.STRING,
-    defaultValue: 'pendiente',  // Estado: 'pendiente', 'en proceso', 'completado'
+    defaultValue: 'pendiente',  // Estado: 'pendiente', 'en proceso', 'finalizada'
     allowNull: false
   }
 }, {
@@ -328,6 +303,7 @@ function generarToken(usuario) {
 function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
+  console.log('Token recibido:', token); // Añadido para depuración
   if (token == null) return res.status(401).json({ error: 'Token no proporcionado' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
@@ -338,7 +314,8 @@ function verificarToken(req, res, next) {
           console.error('Error al verificar el token:', err);
           return res.status(403).json({ error: 'Token inválido' });
       }
-      req.user = user; // Asegúrate de que el token contenga la información necesaria
+      req.user = user;
+      console.log('Usuario verificado:', user); // Añadido para depuración
       next();
   });
 }
@@ -405,6 +382,13 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(contrasenia, 10);
 
+    // Obtener coordenadas usando Mapbox antes de guardar la dirección
+    const coordenadas = await obtenerCoordenadas(direccion);
+    
+    if (!coordenadas.lat || !coordenadas.lon) {
+      return res.status(400).send('No se pudieron obtener las coordenadas para la dirección proporcionada');
+    }
+
     await sequelize.transaction(async (t) => {
       const newUser = await Usuario.create({
         usuario,
@@ -417,6 +401,8 @@ app.post('/registroRestaurante', upload.none(), async (req, res) => {
       await Restaurante.create({
         nombre: nombre_restaurante,
         direccion,
+        latitud: coordenadas.lat, // Guardar latitud
+        longitud: coordenadas.lon, // Guardar longitud
         usuarios_id: newUser.id
       }, { transaction: t });
     });
@@ -456,29 +442,30 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
   }
 });
 
-// Ruta para manejar la subida de fotos de perfil
 app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No se subió ningún archivo.' });
     }
 
-    const imageUrl = `/uploads/${req.file.filename}`; // Ruta relativa de la imagen
-    const userId = req.body.userId; // Suponiendo que el ID del usuario se envía en el cuerpo de la solicitud
+    const imageUrl = `/uploads/${req.file.filename}`;
+    const userId = req.body.userId;
+    console.log('UserId recibido:', userId); // Verifica el valor aquí
 
-    // Actualiza la URL de la foto de perfil en la base de datos usando Sequelize
-    const usuario = await Usuario.findByPk(userId); // Obtén el usuario por su ID
+    // Asegúrate de que userId sea una cadena y no un array
+    if (Array.isArray(userId)) {
+      return res.status(400).json({ success: false, message: 'ID de usuario inválido.' });
+    }
 
+    const usuario = await Usuario.findByPk(userId);
     if (!usuario) {
       return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
     }
 
-    // Actualiza el campo de foto de perfil
     usuario.fotoPerfil = imageUrl;
     await usuario.save();
 
     res.json({ success: true, message: 'Foto de perfil subida con éxito.', imageUrl });
-
   } catch (error) {
     console.error('Error al guardar la URL de la imagen en la base de datos:', error);
     res.status(500).json({ success: false, message: 'Error al guardar la imagen.' });
@@ -488,44 +475,73 @@ app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
 // Servir las imágenes estáticas desde la carpeta 'uploads'
 app.use('/uploads', express.static(uploadDir));
 
-// Función para obtener las coordenadas a partir de la dirección
 async function obtenerCoordenadas(direccion) {
-    if (!direccion) {
-        console.error("La dirección es undefined o vacía. No se pueden obtener coordenadas.");
-        return { lat: null, lon: null };
-    }
+  const apiKey = 'pk.eyJ1IjoiZXZlZWwxMiIsImEiOiJjbTA3MGk4MzkwOThhMmtweWR6bXIzN243In0.383L_pn-MRKDck06J7jktw'; // Token API de Mapbox
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(direccion)}.json?access_token=${apiKey}&country=MX&limit=1`;
 
-    console.log(`Obteniendo coordenadas para la dirección: ${direccion}`);
+  if (!direccion) {
+      console.error("La dirección es undefined o vacía. No se pueden obtener coordenadas.");
+      return { lat: null, lon: null };
+  }
 
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}`;
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.length > 0) {
-            const { lat, lon } = data[0];
-            return { lat, lon };
-        } else {
-            console.error("No se encontraron coordenadas para la dirección.");
-            return { lat: null, lon: null };
-        }
-    } catch (error) {
-        console.error("Error al obtener coordenadas:", error);
-        return { lat: null, lon: null };
-    }
+  console.log(`Obteniendo coordenadas para la dirección: ${direccion}`);
+
+  try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+          const { center } = data.features[0]; // center es un array [lon, lat]
+          const [lon, lat] = center;
+          console.log(`Coordenadas obtenidas para ${direccion}: lat=${lat}, lon=${lon}`);
+          return { lat, lon };
+      } else {
+          console.error("No se encontraron coordenadas para la dirección.");
+          return { lat: null, lon: null };
+      }
+  } catch (error) {
+      console.error("Error al obtener coordenadas:", error);
+      return { lat: null, lon: null };
+  }
 }
+
+//ruga para mostrar al restaurante en su mapa
+// Ruta protegida para obtener datos del restaurante
+app.get('/api/restaurante', verificarToken, async (req, res) => {
+  try {
+      const restaurante = await Restaurante.findOne({ where: { id: req.user.restaurantes_id } });
+      if (restaurante) {
+          res.json({
+              nombre: restaurante.nombre,
+              coordenadas: restaurante.coordenadas
+          });
+      } else {
+          res.status(404).json({ error: 'Restaurante no encontrado' });
+      }
+  } catch (error) {
+      console.error('Error al obtener los datos del restaurante:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
 
 app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
   console.log("Datos recibidos en la solicitud:", req.body);
   const { direccion, restaurantes_id } = req.body;
   console.log("Dirección recibida:", direccion);
-
+  
   try {
     // Obtener las coordenadas de la dirección
     const coordenadas = await obtenerCoordenadas(direccion);
+    
+    // Verifica si las coordenadas son válidas
+    if (coordenadas.lat === null || coordenadas.lon === null) {
+        console.error("Coordenadas no disponibles para la dirección proporcionada.");
+        return res.status(400).json({ error: 'No se pudieron obtener coordenadas para la dirección proporcionada.' });
+    }
 
     // Mostrar las coordenadas
     console.log("Coordenadas obtenidas:", coordenadas);
-
+    
     // Actualizar las coordenadas en la tabla restaurantes
     await Restaurante.update(
       { latitude: coordenadas.lat, longitude: coordenadas.lon },
@@ -538,15 +554,15 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
       fecha_solicitud: new Date(),
       estado: 'pendiente'
     });
-
+    
     // Enviar una respuesta al cliente
     res.json({ message: "Solicitud de recolección enviada correctamente" });
-    //return res.redirect('/mensaje-recoleccion');
   } catch (error) {
     console.error('Error al guardar la solicitud de recolección:', error);
     res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
   }
 });
+
 
 // Ruta para obtener solicitudes de recolección pendientes
 app.get('/solicitudes-pendientes', async (req, res) => {
@@ -590,17 +606,16 @@ async function verificarRecolector(req, res, next) {
 }
 
 // Ruta para aceptar la recolección
+// Ruta para aceptar la recolección
 app.post('/aceptar-recoleccion', verificarToken, verificarRecolector, async (req, res) => {
   const { recoleccion_id } = req.body;
   if (!recoleccion_id) {
     return res.status(400).json({ error: 'ID de recolección es requerido' });
   }
-
   const recolectorId = req.recolector.id; // Obtén el ID del recolector desde req.recolector
   if (!recolectorId) {
     return res.status(401).json({ error: 'No autorizado' });
   }
-
   try {
     // Encuentra la recolección por su ID
     const recoleccion = await Recoleccion.findByPk(recoleccion_id);
@@ -608,51 +623,18 @@ app.post('/aceptar-recoleccion', verificarToken, verificarRecolector, async (req
     if (!recoleccion) {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
-
     if (recoleccion.estado !== 'pendiente') {
       return res.status(400).json({ error: 'La solicitud ya está en proceso o completada' });
     }
-
     // Actualiza el estado de la recolección y asigna el recolector
     await recoleccion.update({
       estado: 'en proceso',
       recolectores_id: recolectorId
     });
-
-    // Emitir evento de actualización si se está usando Websockets
-    io.emit('recoleccion-actualizada', {
-      id: recoleccion_id,
-      estado: 'en proceso',
-      recolector: recolectorId
-    });
-
     res.json({ message: 'Solicitud aceptada y en proceso' });
   } catch (error) {
     console.error('Error al aceptar la recolección:', error);
     res.status(500).json({ error: 'Error al aceptar la recolección' });
-  }
-});
-
-app.post('/actualizar-ubicacion-recolector', verificarToken, async (req, res) => {
-  const { latitude, longitude } = req.body;
-  const recolectorId = req.recolector.id; // Obtén el ID del recolector desde req.recolector
-
-  if (!recolectorId) {
-      return res.status(401).json({ error: 'No autorizado' });
-  }
-
-  try {
-      // Actualiza la ubicación del recolector en la base de datos
-      await UbicacionRecolector.upsert({
-          recolector_id: recolectorId,
-          latitude,
-          longitude
-      });
-
-      res.json({ message: 'Ubicación actualizada correctamente' });
-  } catch (error) {
-      console.error('Error al actualizar ubicación:', error);
-      res.status(500).json({ error: 'Error al actualizar ubicación' });
   }
 });
 
@@ -683,50 +665,125 @@ app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (re
   }
 });
 
-// Datos de ubicación de ejemplo
-const ubicacionRecolector = {
-    latitude: 19.4326,
-    longitude: -99.1332
-};
-
-io.on('connection', ws => {
-    console.log('Cliente conectado');
-    
-    // Enviar la ubicación del recolector a todos los clientes conectados
-    setInterval(() => {
-        // Puedes obtener la ubicación en tiempo real aquí
-        ws.send(JSON.stringify(ubicacionRecolector));
-    }, 5000); // Enviar cada 5 segundos
-});
-
-// Ruta para que el restaurante califique al recolector
-app.post('/calificar-recolector', async (req, res) => {
-  const { recolectorId, rating } = req.body;
+// Endpoint para actualizar el estado de una solicitud
+app.patch('/update-status/:id', verificarToken, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
 
   try {
-      if (!recolectorId || !rating) {
-          return res.status(400).json({ success: false, message: 'Faltan datos necesarios' });
-      }
-
-      // Verifica si existe una recolección con el recolectorId y estado 'completado'
-      const recoleccion = await Recoleccion.findOne({
-        where: { recolectores_id: recolectorId, estado: 'completado' }
-      });
+      const recoleccion = await Recoleccion.findByPk(id);
 
       if (!recoleccion) {
-          return res.status(404).json({ success: false, message: 'No se encontró una recolección para calificar o ya está calificada' });
+          return res.status(404).json({ error: 'Recolección no encontrada' });
       }
 
-      // Si existe la recolección, se procede a actualizar la calificación
-      await Recoleccion.update(
-        { calificacion: rating },
-        { where: { id: recoleccion.id } }  // Utilizamos el id de la recolección encontrada
-      );
+      // Actualiza el estado de la solicitud
+      recoleccion.estado = status;
+      await recoleccion.save();
 
-      res.json({ success: true, message: 'Calificación registrada exitosamente' });
+      res.json({ success: true });
   } catch (error) {
-      console.error('Error al guardar la calificación:', error);
-      res.status(500).json({ success: false, message: 'Error al registrar la calificación' });
+      console.error('Error al actualizar el estado:', error);
+      res.status(500).json({ error: 'Error al actualizar el estado' });
+  }
+});
+
+app.get('/historial-recolecciones/:restaurantes_id', async (req, res) => {
+  const { restaurantes_id } = req.params;
+
+  try {
+      // Obtener todas las recolecciones finalizadas para el restaurante dado
+      const recolecciones = await Recoleccion.findAll({
+        where: {
+          restaurantes_id: restaurantes_id,
+          estado: 'finalizada'
+        },
+        include: [
+          {
+            model: Recolector,  // Incluir el recolector
+            attributes: ['id'],  // Solo necesitamos el ID del recolector
+            include: [
+              {
+                model: Usuario,  // Incluir el usuario asociado al recolector
+                attributes: ['nombre'],  // Solo necesitamos el nombre del usuario (recolector)
+              }
+            ]
+          }
+        ]
+      });
+            
+      res.json({ success: true, recolecciones });
+  } catch (error) {
+      console.error('Error al obtener el historial de recolecciones:', error);
+      res.status(500).json({ success: false, message: 'Error al obtener el historial de recolecciones' });
+  }
+});
+
+app.get('/obtener-recolector', async (req, res) => {
+  const recolectorId = req.query.recolectorId; // Asegúrate de que estás obteniendo el restauranteId de la consulta
+  if (!recolectorId) {
+    return res.status(400).json({ success: false, message: 'Falta el ID del restaurante' });
+  }
+
+  try {
+    // Encuentra una recolección finalizada asociada al restaurante
+    const recoleccion = await Recoleccion.findOne({
+      where: { 
+        estado: 'finalizada',
+        recolectorId: recolectorId
+      },
+      include: [
+        {
+          model: Recolector, // Relación con el modelo Recolector
+          include: [{
+            model: Usuario,  // Relación con el modelo Usuario
+            attributes: ['nombre'] // Obtener el nombre del recolector desde la tabla usuarios
+          }]
+        }
+      ]
+    });
+
+    if (!recoleccion) {
+      return res.status(404).json({ success: false, message: 'No se encontró una recolección finalizada para este restaurante' });
+    }
+
+    const recolectorNombre = recoleccion.recolector.user.nombre; // Acceso al nombre del recolector
+    const recolectorId = recoleccion.recolector.id;
+
+    res.json({ success: true, recolectorNombre, recolectorId });
+  } catch (error) {
+    console.error('Error al obtener el recolector:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener el recolector' });
+  }
+});
+
+app.post('/calificar-recolector', async (req, res) => {
+  const { recolectorId, rating, restauranteId } = req.body; // Añadimos restauranteId desde el cuerpo de la solicitud
+
+  try {
+    if (!recolectorId || !rating || !restauranteId) {
+      return res.status(400).json({ success: false, message: 'Faltan datos necesarios' });
+    }
+
+    // Verifica si existe una recolección con el recolectorId, estado 'finalizada' y el restauranteId proporcionado
+    const recoleccion = await Recoleccion.findOne({
+      where: { recolectores_id: recolectorId, estado: 'finalizada', restaurantes_id: restauranteId }  // Añadimos el filtro de restauranteId
+    });
+
+    if (!recoleccion) {
+      return res.status(404).json({ success: false, message: 'No se encontró una recolección para calificar o ya está calificada' });
+    }
+
+    // Si existe la recolección, se procede a actualizar la calificación
+    await Recoleccion.update(
+      { calificacion: rating },
+      { where: { id: recoleccion.id } }  // Utilizamos el id de la recolección encontrada
+    );
+
+    res.json({ success: true, message: 'Calificación registrada exitosamente' });
+  } catch (error) {
+    console.error('Error al guardar la calificación:', error);
+    res.status(500).json({ success: false, message: 'Error al registrar la calificación' });
   }
 });
 

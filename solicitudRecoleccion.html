@@ -39,7 +39,6 @@
         <nav class="footer-nav">
             <a href="inicioRestaurante.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="solicitudRecoleccion.html"><img src="bote-icon.png" alt="Bote"></a>
-            <a href="mapa.html"><img src="map-icon.png" alt="Mapa"></a>
             <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
@@ -47,14 +46,11 @@
     <script>
         const toggleSwitch = document.getElementById('toggle');
         const confirmButton = document.querySelector('.confirm-btn');
-
         confirmButton.style.opacity = '0.5';
-
         // Evento para manejar el cambio de estado del switch
         toggleSwitch.addEventListener('change', function() {
             confirmButton.style.opacity = this.checked ? '1' : '0.5';
         });
-
         // Función para obtener las coordenadas del usuario
         function obtenerCoordenadas() {
             return new Promise((resolve, reject) => {
@@ -76,7 +72,6 @@
                 }
             });
         }
-
         // Al hacer clic en el botón de confirmación
         confirmButton.addEventListener('click', async function(event) {
             if (!toggleSwitch.checked) {
@@ -84,7 +79,6 @@
                 alert('Por favor, activa el switch para confirmar la recolección.');
                 return;
             }
-
             try {
                 // Obtener coordenadas del usuario
                 const coordenadas = await obtenerCoordenadas();
@@ -92,7 +86,6 @@
                 // Obtener el ID del restaurante y la dirección desde el localStorage
                 const restaurantes_id = localStorage.getItem('restaurantes_id');
                 const direccion = localStorage.getItem('direccion');
-
                 // Validar que ambos valores existan antes de enviar la solicitud
                 if (!restaurantes_id || !direccion) {
                     alert('Error: No se pudo encontrar la información del restaurante o la dirección. Por favor, revisa e intenta de nuevo.');

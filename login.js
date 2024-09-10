@@ -134,33 +134,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Registro Restaurante
     const formRegistroRestaurante = document.getElementById('formRegistroRestaurante');
-        if (formRegistroRestaurante) {
-            formRegistroRestaurante.addEventListener('submit', async function(event) {  // Cambié `formRegistroRecolector` a `formRegistroRestaurante`
-                event.preventDefault();
+    if (formRegistroRestaurante) {
+        formRegistroRestaurante.addEventListener('submit', async function(event) {
+            event.preventDefault();
 
-                const formData = new FormData(this);
-                const data = Object.fromEntries(formData.entries());
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
 
-                try {
-                    const response = await fetch('/registroRestaurante', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
+            // Validar que la dirección tenga al menos calle, colonia, ciudad y estado
+            if (!data.direccion || data.direccion.split(' ').length < 3) {
+                window.alert('Por favor, proporciona una dirección completa (Calle, Colonia, Ciudad, Estado).');
+                return;
+            }
 
-                    const result = await response.json();
-                    if (result.success) {
-                        window.alert(result.message);
-                        // Redirigir o hacer algo después de un registro exitoso
-                        alert('Registro exitoso. ¡Ahora puedes iniciar sesión!');
-                    } else {
-                        window.alert(result.message);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    window.alert('Hubo un error al intentar registrar el usuario.');
+            try {
+                const response = await fetch('/registroRestaurante', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.alert(result.message);
+                    alert('Registro exitoso. ¡Ahora puedes iniciar sesión!');
+                } else {
+                    window.alert(result.message);
                 }
-            });
-        }
-    });
+            } catch (error) {
+                console.error('Error:', error);
+                window.alert('Hubo un error al intentar registrar el usuario.');
+            }
+        });
+    }
+});
+
 

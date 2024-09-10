@@ -7,6 +7,7 @@
     <title>Perfil del Restaurante</title>
 </head>
 <body>
+    
     <header>
         <div class="logo">
             <a href="inicioRestaurante.html"><img src="logoWT.png" alt="Waste Tracker"></a>
@@ -49,11 +50,9 @@
         <nav class="footer-nav">
             <a href="inicioRestaurante.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="solicitudRecoleccion.html"><img src="bote-icon.png" alt="Bote"></a>
-            <a href="mapa.html"><img src="map-icon.png" alt="Mapa"></a>
             <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
-
     <!-- JavaScript para manejo de imagen de perfil -->
     <script>
         const cargarFotoPerfil = document.getElementById('cargar-foto-perfil');
@@ -102,22 +101,8 @@
                     }
                 }
             });
-
-
-             // Confirmación de cierre de sesión
-            const logoutButton = document.getElementById('logoutButton');
-                if (logoutButton) {
-                    logoutButton.addEventListener('click', function(event) {
-                        event.preventDefault();
-                        const logoutForm = document.getElementById('logoutForm');
-                        if (logoutForm && confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-                            logoutForm.submit();
-                        } else {
-                            console.error('El formulario de cierre de sesión "logoutForm" no se encontró.');
-                        }
-                    });
-                }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
+    <script src="login.js"></script>
 </body>
 </html>

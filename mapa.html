@@ -29,50 +29,50 @@
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
-    
     <script>
         // Tu token de Mapbox
         const mapboxAccessToken = 'pk.eyJ1IjoiZXZlZWwxMiIsImEiOiJjbTA3MGk4MzkwOThhMmtweWR6bXIzN243In0.383L_pn-MRKDck06J7jktw';
 
-        // Crear el mapa centrado en un punto inicial
-        const map = L.map('map').setView([19.4326, -99.1332], 12); // Centro en Ciudad de México
+        // Obtener el token JWT almacenado en localStorage
+        const token = localStorage.getItem('token');
+        console.log('Token en localStorage:', token);
 
-        // Agregar la capa de Mapbox usando Leaflet
-        L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxAccessToken}`, {
-            tileSize: 512,
-            zoomOffset: -1,
-            attribution: '© Mapbox © OpenStreetMap'
-        }).addTo(map);
-
-        // Ejemplo de ubicación de un restaurante
-        const restaurantLocation = [19.4346, -99.1354]; // Coordenadas del restaurante
-        const startLocation = [19.4326, -99.1332]; // Coordenadas del punto de inicio
-
-        // Agregar un marcador para el restaurante
-        L.marker(restaurantLocation).addTo(map)
-            .bindPopup('King Fish')
-            .openPopup();
-
-        // Obtener la ruta usando la API de Mapbox Directions
-        const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLocation[1]},${startLocation[0]};${restaurantLocation[1]},${restaurantLocation[0]}?geometries=geojson&access_token=${mapboxAccessToken}`;
-
-        fetch(directionsUrl)
-            .then(response => response.json())
-            .then(data => {
-                const route = data.routes[0].geometry.coordinates;
-                const routeLatLngs = route.map(point => [point[1], point[0]]);
-
-                // Dibujar la ruta en el mapa
-                L.polyline(routeLatLngs, {
-                    color: 'blue',
-                    weight: 5,
-                    opacity: 0.7
-                }).addTo(map);
+        if (!token) {
+            console.error('Token no encontrado en localStorage');
+            alert('No se ha encontrado el token. Por favor, inicie sesión nuevamente.');
+        } else {
+            // Obtener los datos del restaurante desde la API
+            fetch('/api/restaurante', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
             })
-            .catch(err => console.error('Error al obtener direcciones:', err));
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la solicitud: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                const restaurantLocation = data.coordenadas || [19.4346, -99.1354]; // Valores predeterminados si no hay coordenadas
+                const restaurantName = data.nombre || 'Restaurante sin nombre';  // Nombre del restaurante
+
+                const map = L.map('map').setView(restaurantLocation, 15);
+
+                L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${mapboxAccessToken}`, {
+                    tileSize: 512,
+                    zoomOffset: -1,
+                    attribution: '© Mapbox © OpenStreetMap'
+                }).addTo(map);
+
+                L.marker(restaurantLocation).addTo(map)
+                    .bindPopup(restaurantName)  // Mostrar nombre del restaurante
+                    .openPopup();
+            })
+            .catch(error => console.error('Error al obtener los datos del restaurante:', error));
+        }
     </script>
-    
     <footer>
         <nav class="footer-nav">
             <a href="inicioRestaurante.html" aria-label="Inicio"><img src="home-icon.png" alt="Inicio"></a>

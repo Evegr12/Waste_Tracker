@@ -13,7 +13,7 @@
     </style>
 </head>
 <body>
-    <header></header>
+    <header>
         <div class="logo">
             <a href="inicioRecolector.html"><img src="logoWT.png" alt="Waste Tracker"></a>
             <h1>Waste Tracker</h1>
@@ -28,7 +28,6 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-    <script src="/socket.io/socket.io.js"></script>  <!-- Asegúrate de cargar socket.io -->
 
     <script>
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
@@ -36,8 +35,6 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
-        const recolectorMarkers = {}; // Objeto para almacenar los marcadores de los recolectores
 
         // Mostrar las solicitudes aceptadas en el mapa
         fetch('/solicitudes-aceptadas', {
@@ -55,20 +52,18 @@
             if (Array.isArray(data)) {
                 data.forEach(request => {
                     if (request.restaurante.latitude && request.restaurante.longitude) {
-                        const popupContent = `<b>Restaurante:</b> ${request.restaurante.nombre}<br>
-                                              <b>Dirección:</b> ${request.restaurante.direccion}`;
+                        const popupContent = `
+                            <b>Restaurante:</b> ${request.restaurante.nombre}<br>
+                            <b>Dirección:</b> ${request.restaurante.direccion}<br>
+                            <div class="popup-buttons">
+                                <button class="cancel-button" onclick="updateStatus('${request.id}', 'pendiente')">Cancelar</button>
+                                <button class="finalize-button" onclick="updateStatus('${request.id}', 'finalizada')">Finalizada</button>
+                            </div>
+                        `;
 
                         const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude])
                             .addTo(map)
                             .bindPopup(popupContent);
-
-                        // Si tienes que mostrar rutas, puedes usar Leaflet Routing Machine aquí
-                        L.Routing.control({
-                            waypoints: [
-                                L.latLng(recolectorMarkers.latitude, recolectorMarkers.longitude),
-                                L.latLng(request.restaurante.latitude, request.restaurante.longitude)
-                            ]
-                        }).addTo(map);
                     }
                 });
             } else {
@@ -79,51 +74,34 @@
             console.error('Error fetching requests:', error);
         });
 
-        const socket = io();
-        
-        // Actualizar ubicación del recolector en tiempo real
-        socket.on('actualizarUbicacionRecolector', (data) => {
-            const { latitude, longitude, recolectorId } = data;
-
-            // Si ya existe el marcador del recolector, actualizar su posición
-            if (recolectorMarkers[recolectorId]) {
-                recolectorMarkers[recolectorId].setLatLng([latitude, longitude]);
-            } else {
-                // Si no existe, crear un nuevo marcador
-                const marker = L.marker([latitude, longitude])
-                    .addTo(map)
-                    .bindPopup(`<b>Recolector ID:</b> ${recolectorId}`);
-                
-                recolectorMarkers[recolectorId] = marker;
-            }
-        });
-
-        // Enviar la ubicación del recolector al servidor en tiempo real
-        navigator.geolocation.watchPosition((position) => {
-            const { latitude, longitude } = position.coords;
-
-            socket.emit('ubicacionRecolector', {
-                recolectorId: obtenerIdRecolector(),
-                latitude,
-                longitude
+        function updateStatus(requestId, status) {
+            fetch(`/update-status/${requestId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                },
+                body: JSON.stringify({ status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Estado actualizado a ${status}`);
+                    location.reload(); // Recarga la página para actualizar el mapa
+                } else {
+                    alert('Error al actualizar el estado.');
+                }
+            })
+            .catch(error => {
+                console.error('Error al actualizar el estado:', error);
             });
-
-            // Actualiza la ruta si el recolector cambia de posición
-            L.Routing.control({
-                waypoints: [
-                    L.latLng(latitude, longitude),
-                    L.latLng(request.restaurante.latitude, request.restaurante.longitude)
-                ]
-            }).addTo(map);
-        }); 
+        }
     </script>
-
     <footer>
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </footer>
-    <script src="/socket.io/socket.io.js"></script>
 </body>
 </html>

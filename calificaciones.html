@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="calificaciones.css">
-    <title>Document</title>
+    <title>Calificar Recolector</title>
 </head>
 <body>
     <header>
@@ -13,17 +13,17 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones" href="notificaciones.html"></a>
+            <a href="notificaciones.html"><img src="notificaciones.png" alt="Notificaciones"></a>
             <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
             <a href="perfilRestaurante.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
 
     <div class="rating-card">
-        <h3>Calificar</h3>
+        <h3>Calificar Recolector</h3>
         <div class="user-info">
             <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
-            <span class="user-name">Julio Cruz</span>
+            <span class="user-name">Recolector</span> <!-- El nombre del recolector será dinámico -->
         </div>
         <div class="rating">
             <span class="star" data-value="1">&#9733;</span>
@@ -32,7 +32,7 @@
             <span class="star" data-value="4">&#9733;</span>
             <span class="star" data-value="5">&#9733;</span>
         </div>
-        <button class="submitRating">Enviar calificación</button> <!-- Cambiado el selector del botón -->
+        <button class="submitRating">Enviar calificación</button>
     </div>
 
     <script>
@@ -40,7 +40,7 @@
             const stars = document.querySelectorAll('.star');
             const submitButton = document.querySelector('.submitRating'); // Cambiado a querySelector para seleccionar por clase
             let selectedValue = 0; // Variable para almacenar la calificación seleccionada
-    
+            
             if (submitButton) { // Verifica que submitButton no sea null
                 stars.forEach(star => {
                     star.addEventListener('mouseover', handleMouseOver);
@@ -87,8 +87,15 @@
                         return;
                     }
     
-                    // Aquí puedes enviar la calificación al servidor
-                    const recolectorId = 1; // Suponiendo que tienes el ID del recolector
+                    // Obtén los datos necesarios para enviar al servidor
+                    const recolectorId = recolectorId; // Suponiendo que tienes el ID del recolector
+                    const restauranteId = localStorage.getItem('restauranteId'); // Obtener el ID del restaurante desde localStorage
+    
+                    // Verifica que restauranteId no sea null o undefined
+                    if (!restauranteId) {
+                        alert('No se encontró el ID del restaurante. Por favor, inicie sesión nuevamente.');
+                        return;
+                    }
     
                     console.log('Enviando calificación:', selectedValue); // Debugging
     
@@ -97,7 +104,7 @@
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ recolectorId, rating: selectedValue }) // Datos enviados al servidor
+                        body: JSON.stringify({ recolectorId, rating: selectedValue, restauranteId }) // Enviar restauranteId también
                     })
                     .then(response => response.json())
                     .then(data => {
@@ -119,16 +126,14 @@
                 console.error('No se encontró el botón de enviar calificación con la clase "submitRating".');
             }
         });
-    </script>
+    </script>    
 
     <footer>
         <nav class="footer-nav">
             <a href="inicioRestaurante.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="solicitudRecoleccion.html"><img src="bote-icon.png" alt="Bote"></a>
-            <a href="mapa.html"><img src="map-icon.png" alt="Mapa"></a>
             <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
-
 </body>
 </html>

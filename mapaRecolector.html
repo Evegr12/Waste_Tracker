@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="mapa.css">
     <style>
         #map {
-            height: 700px;
+            height: 800px;
             width: 100%;
         }
     </style>
@@ -19,7 +19,7 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones" href="notificacionesRecolector.html"></a>
+            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones"></a>
         </nav>
     </header>
 
@@ -30,12 +30,10 @@
     <script>
         // Inicializa el mapa
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
-
         // Agrega una capa de tile map
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
         // Obtén los datos de solicitudes pendientes
         fetch('/solicitudes-pendientes')
             .then(response => response.json())
@@ -49,15 +47,12 @@
                 });
             })
             .catch(error => console.error('Error fetching requests:', error));
-
             function aceptarRecoleccion(recoleccionId) {
             const authToken = localStorage.getItem('token'); // Obtener el token de localStorage
-
             if (!authToken) {
                 alert('No estás autenticado. Por favor, inicia sesión.');
                 return;
             }
-
             fetch('/aceptar-recoleccion', {
                 method: 'POST',
                 headers: {
@@ -91,4 +86,3 @@
 
 </body>
 </html>
-

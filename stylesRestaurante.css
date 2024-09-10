@@ -28,8 +28,8 @@ header {
 }
 
 .logo img {
-    width: 80px;
-    height: 60px;
+    width: 100px;
+    height: 80px;
     margin-right: 10px;
 }
 
@@ -55,8 +55,8 @@ nav a {
 }
 
 nav img {
-    width: 32px;
-    height: 30px;
+    width: 34px;
+    height: 36px;
     cursor: pointer;
     transition: transform 0.3s ease;
 }
@@ -122,8 +122,8 @@ footer {
 }
 
 .footer-nav img {
-    width: 25px;
-    height: 28px;
+    width: 32px;
+    height: 35px;
     cursor: pointer;
     transition: transform 0.3s ease;
 }

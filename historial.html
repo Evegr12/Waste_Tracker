@@ -3,14 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial de Residuos Vertidos</title>
     <link rel="stylesheet" href="historial.css">
 </head>
@@ -29,29 +21,8 @@
 
     <div class="history">
         <h2>Historial de residuos vertidos</h2>
-        <div class="entry">
-            <div class="entry-header">
-                <span class="by">Por:</span>
-                <img src="perfil-icon.png" alt="User Icon" class="user-icon">
-                <span class="name">Julio Cruz</span>
-            </div>
-            <div class="entry-info">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">17:55 pm</span>
-                <a href="calificaciones.html" class="rate-link">Calificar</a>
-            </div>
-        </div>
-        <div class="entry">
-            <div class="entry-header">
-                <span class="by">Por:</span>
-                <img src="perfil-icon.png" alt="User Icon" class="user-icon">
-                <span class="name">Fernando Mendoza</span>
-            </div>
-            <div class="entry-info">
-                <span class="date">25 / may / 2024</span>
-                <span class="time">15:22 pm</span>
-                <a href="calificaciones.html" class="rate-link">Calificar</a>
-            </div>
+        <div id="historial-container">
+            <!-- Aquí se cargarán las entradas del historial dinámicamente -->
         </div>
     </div>
 
@@ -59,13 +30,59 @@
         <nav class="footer-nav">
             <a href="inicioRestaurante.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="solicitudRecoleccion.html"><img src="bote-icon.png" alt="Bote"></a>
-            <a href="mapa.html"><img src="map-icon.png" alt="Mapa"></a>
             <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
-    
-</body>
-</html>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const historialContainer = document.getElementById('historial-container');
+            if (!historialContainer) {
+                console.error('No se encontró el contenedor del historial.');
+                return;  // Detener la ejecución si no se encuentra el contenedor
+            }
+    
+            const restaurantesId = localStorage.getItem('restaurantes_id');
+            if (!restaurantesId) {
+                alert('No se encontró el ID del restaurante. Por favor, inicie sesión nuevamente.');
+                window.location.href = 'login.html';
+                return;
+            }
+    
+            try {
+                const response = await fetch(`/historial-recolecciones/${restaurantesId}`);
+                const data = await response.json();
+    
+                if (data.success && data.recolecciones.length > 0) {
+                    data.recolecciones.forEach(recoleccion => {
+                        const recolectorNombre = recoleccion.recolector && recoleccion.recolector.usuario ? recoleccion.recolector.usuario.nombre : 'Desconocido';
+                        const entry = document.createElement('div');
+                        entry.classList.add('entry');
+                        
+                        entry.innerHTML = `
+                            <div class="entry-header">
+                                <span class="by">Por:</span>
+                                <img src="perfil-icon.png" alt="User Icon" class="user-icon">
+                                <span class="name">${recolectorNombre}</span>
+                            </div>
+                            <div class="entry-info">
+                                <span class="date">${new Date(recoleccion.fecha_recoleccion).toLocaleDateString()}</span>
+                                <span class="time">${new Date(recoleccion.fecha_recoleccion).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <a href="calificaciones.html?recolectorId=${recoleccion.recolectores_id}" class="rate-link">Calificar</a>
+                            </div>
+                        `;
+                                                                        
+                        historialContainer.appendChild(entry);
+                    });
+                } else {
+                    historialContainer.innerHTML = '<p>No hay recolecciones finalizadas.</p>';
+                }
+            } catch (error) {
+                console.error('Error al cargar el historial de recolecciones:', error);
+                alert('Error al cargar el historial de recolecciones.');
+            }
+        });
+    </script>
+    
 </body>
 </html>
