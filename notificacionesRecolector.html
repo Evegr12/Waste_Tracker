@@ -38,7 +38,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-    // Escuchar actualizaciones de notificaciones desde el servidor.
     fetch('/notificaciones-recolector', {
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -46,7 +45,6 @@
     })
     .then(response => response.json())
     .then(data => {
-        // Si hay una nueva solicitud, mostrar la notificación con el mensaje
         if (data.nuevaSolicitud) {
             mostrarNotificacion(data.mensaje, data.fechaHora);
         } else {
@@ -62,7 +60,6 @@
     .catch(error => console.error('Error al cargar las notificaciones:', error));
 });
 
-// Función para mostrar notificaciones en la interfaz
 function mostrarNotificacion(mensaje, fechaHora) {
     const notificationContainer = document.querySelector('.notificaciones-recolector');
     const notificationItem = document.createElement('div');
@@ -75,6 +72,7 @@ function mostrarNotificacion(mensaje, fechaHora) {
     `;
     notificationContainer.appendChild(notificationItem);
 }
+
 
     </script>        
     

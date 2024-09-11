@@ -88,80 +88,77 @@
             });
         })
         .catch(error => console.error('Error fetching requests:', error));
-
         async function confirmarAceptacion() {
-            const authToken = localStorage.getItem('token'); // Obtener el token de localStorage
-            if (!authToken) {
-                alert('No estás autenticado. Por favor, inicia sesión.');
-                return;
-            }
+    const authToken = localStorage.getItem('token');
+    if (!authToken) {
+        alert('No estás autenticado. Por favor, inicia sesión.');
+        return;
+    }
 
-            // Obtener IDs de solicitudes aceptadas
-            const acceptedIds = Object.keys(markers).filter(id => {
-                const checkbox = document.getElementById(`accept-${id}`);
-                return checkbox && checkbox.checked;
+    const acceptedIds = Object.keys(markers).filter(id => {
+        const checkbox = document.getElementById(`accept-${id}`);
+        return checkbox && checkbox.checked;
+    });
+
+    if (acceptedIds.length === 0) {
+        alert('No has seleccionado ninguna solicitud para aceptar.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/aceptar-recolecciones', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ recolecciones_ids: acceptedIds })
+        });
+        const data = await response.json();
+
+        if (data.message) {
+            alert(data.message);
+
+            acceptedIds.forEach(id => {
+                if (markers[id]) {
+                    markers[id].marker.setIcon(iconAccepted);
+                    markers[id].accepted = true;
+                    const checkbox = document.getElementById(`accept-${id}`);
+                    if (checkbox) checkbox.disabled = true;
+                }
             });
 
-            if (acceptedIds.length === 0) {
-                alert('No has seleccionado ninguna solicitud para aceptar.');
-                return;
-            }
-
-            try {
-                // Aceptar las recolecciones
-                const response = await fetch('/aceptar-recolecciones', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify({ recolecciones_ids: acceptedIds })
-                });
-                const data = await response.json();
-
-                if (data.message) {
-                    alert(data.message);
-                    // Actualiza el icono de los marcadores aceptados
-                    acceptedIds.forEach(id => {
-                        if (markers[id]) {
-                            markers[id].marker.setIcon(iconAccepted);
-                            markers[id].accepted = true; // Marcar como aceptado
-                            const checkbox = document.getElementById(`accept-${id}`);
-                            if (checkbox) checkbox.disabled = true; // Deshabilitar el checkbox
-                        }
-                    });
-
-                    // Obtener el mensaje con ID=8
-                    const mensajeResponse = await fetch('/mensaje-recoleccion/8', {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    });
-                    const mensaje = await mensajeResponse.json();
-
-                    // Guardar el mensaje en el localStorage
-                    guardarNotificacion(mensaje.texto, new Date().toLocaleString(), 'recolector');
-
-                    // Espera un momento antes de redirigir para asegurar que el mapa se actualice
-                    setTimeout(() => {
-                        window.location.href = 'notificacionesRecolector.html'; // Redirige a la página de notificaciones
-                    }, 500);
-                } else {
-                    alert('Error al aceptar las recolecciones.');
+            // Obtener el mensaje con ID=8
+            const mensajeResponse = await fetch('/mensaje-recoleccion/8', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
                 }
-            } catch (error) {
-                console.error('Error al aceptar las recolecciones:', error);
-                alert('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.');
-            }
-        }
+            });
+            const mensaje = await mensajeResponse.json();
 
-        // Función para guardar notificaciones en el localStorage
-        function guardarNotificacion(mensaje, fechaHora, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
-            notificaciones.push({ mensaje, fechaHora, tipo });
-            localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
+            // Guardar el mensaje en el localStorage
+            guardarNotificacion(mensaje.texto, new Date().toLocaleString(), 'recolector');
+
+            setTimeout(() => {
+                window.location.href = 'notificacionesRecolector.html'; 
+            }, 500);
+        } else {
+            alert('Error al aceptar las recolecciones.');
         }
+    } catch (error) {
+        console.error('Error al aceptar las recolecciones:', error);
+        alert('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.');
+    }
+}
+
+function guardarNotificacion(mensaje, fechaHora, tipo) {
+    let notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
+    notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
+    localStorage.setItem('notificacionesRecolector', JSON.stringify(notificaciones));
+}
+
+
     </script>
 
     <footer>
