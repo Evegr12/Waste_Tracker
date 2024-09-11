@@ -57,6 +57,7 @@
                             <b>Dirección:</b> ${request.restaurante.direccion}<br>
                             <div class="popup-buttons">
                                 <button class="cancel-button" onclick="updateStatus('${request.id}', 'pendiente')">Cancelar</button>
+                                <button class="finalize-button" onclick="updateStatus('${request.id}', 'en camino')">En camino</button>
                                 <button class="finalize-button" onclick="updateStatus('${request.id}', 'finalizada')">Finalizada</button>
                             </div>
                         `;
@@ -100,6 +101,7 @@
     <footer>
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
             <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </footer>

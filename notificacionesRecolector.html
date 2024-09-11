@@ -4,50 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="notificacionesRecolector.css">
-    <title>Document</title>
+    <title>Waste Tracker - Notificaciones</title>
 </head>
 <body>
     <header>
         <div class="logo">
-            <a href="inicioRecolector.html"><img src="logoWT.png" alt="Waste Tracker"></a>
+            <a href="inicioRecolector.html">
+                <img src="logoWT.png" alt="Waste Tracker">
+            </a>
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones" href="notificacionesRecolector.html"></a>
+            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones"></a>
+            <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
+            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
 
-    <div class="notifications">
-        <h2>Notificaciones</h2>
-        <div class="notification">
-            <p class="message">Hay nuevas rutas!</p>
-            <div class="datetime">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">15:40</span>
-            </div>
+    <main>
+        <div class="notificaciones-recolector">
+            <h2>Notificaciones</h2>
+            <!-- Aquí se agregarán las notificaciones dinámicamente -->
         </div>
-        <div class="notification">
-            <p class="message">King Fish te ha calificado</p>
-            <div class="datetime">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">15:22</span>
-            </div>
-        </div>
-        <div class="notification">
-            <p class="message">Ruta finalizada</p>
-            <div class="datetime">
-                <span class="date">20 / may / 2024</span>
-                <span class="time">14:00</span>
-            </div>
-        </div>
-    </div>
+    </main>
 
     <footer>
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa"></a>
             <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+    // Escuchar actualizaciones de notificaciones desde el servidor.
+    fetch('/notificaciones-recolector', {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Si hay una nueva solicitud, mostrar la notificación con el mensaje
+        if (data.nuevaSolicitud) {
+            mostrarNotificacion(data.mensaje, data.fechaHora);
+        } else {
+            console.log('No hay nuevas solicitudes.');
+        }
+
+        // Cargar notificaciones guardadas en el localStorage (si las hay)
+        const notificacionesGuardadas = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
+        notificacionesGuardadas.forEach(notificacion => {
+            mostrarNotificacion(notificacion.mensaje, notificacion.fechaHora);
+        });
+    })
+    .catch(error => console.error('Error al cargar las notificaciones:', error));
+});
+
+// Función para mostrar notificaciones en la interfaz
+function mostrarNotificacion(mensaje, fechaHora) {
+    const notificationContainer = document.querySelector('.notificaciones-recolector');
+    const notificationItem = document.createElement('div');
+    notificationItem.classList.add('notification');
+    notificationItem.innerHTML = `
+        <p class="message">${mensaje}</p>
+        <div class="datetime">
+            <span class="date-time">${new Date(fechaHora).toLocaleString()}</span>
+        </div>
+    `;
+    notificationContainer.appendChild(notificationItem);
+}
+
+    </script>        
+    
 </body>
 </html>

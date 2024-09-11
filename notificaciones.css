@@ -68,14 +68,14 @@ nav img:hover {
 }
 
 .notifications {
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: 600px;
-    max-width: 100%;
-    margin: 20px auto;
+    max-height: 800px; /* Ajusta este valor según tus necesidades */
+    overflow-y: auto;  /* Habilita el scroll vertical */
+    border: 1px solid #ddd; /* Añade un borde opcional */
+    padding: 20px; /* Espacio interno */
+    background-color: #f9f9f9; /* Fondo para que contraste con las notificaciones */
+    margin-top: 30px; /* Margen superior opcional */
 }
+
 
 .notification-item {
     padding: 10px;

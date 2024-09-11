@@ -52,10 +52,12 @@
             try {
                 const response = await fetch(`/historial-recolecciones/${restaurantesId}`);
                 const data = await response.json();
+                console.log(data);
     
                 if (data.success && data.recolecciones.length > 0) {
                     data.recolecciones.forEach(recoleccion => {
-                        const recolectorNombre = recoleccion.recolector && recoleccion.recolector.usuario ? recoleccion.recolector.usuario.nombre : 'Desconocido';
+                        console.log(recoleccion.recolector);
+                        const recolectorNombre = recoleccion.recolector && recoleccion.recolector.usuario ? recoleccion.recolector.usuario.nombre : 'recolector';
                         const entry = document.createElement('div');
                         entry.classList.add('entry');
                         

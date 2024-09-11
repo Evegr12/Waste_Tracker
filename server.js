@@ -524,45 +524,72 @@ app.get('/api/restaurante', verificarToken, async (req, res) => {
   }
 });
 
+const notificacionesFile = path.join(__dirname, 'notificaciones.json');
+
 app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
   console.log("Datos recibidos en la solicitud:", req.body);
   const { direccion, restaurantes_id } = req.body;
   console.log("Dirección recibida:", direccion);
-  
+
   try {
     // Obtener las coordenadas de la dirección
     const coordenadas = await obtenerCoordenadas(direccion);
-    
+
     // Verifica si las coordenadas son válidas
     if (coordenadas.lat === null || coordenadas.lon === null) {
-        console.error("Coordenadas no disponibles para la dirección proporcionada.");
-        return res.status(400).json({ error: 'No se pudieron obtener coordenadas para la dirección proporcionada.' });
+      console.error("Coordenadas no disponibles para la dirección proporcionada.");
+      return res.status(400).json({ error: 'No se pudieron obtener coordenadas para la dirección proporcionada.' });
     }
 
     // Mostrar las coordenadas
     console.log("Coordenadas obtenidas:", coordenadas);
-    
+
     // Actualizar las coordenadas en la tabla restaurantes
     await Restaurante.update(
       { latitude: coordenadas.lat, longitude: coordenadas.lon },
       { where: { id: restaurantes_id } }
     );
 
-    // Crear la solicitud de recolección
+    // Crear la solicitud de recolección con la fecha y hora actual
     const recoleccion = await Recoleccion.create({
       restaurantes_id: restaurantes_id,
-      fecha_solicitud: new Date(),
+      fecha_solicitud: new Date(),  // Registra la fecha y hora de la solicitud
       estado: 'pendiente'
     });
-    
+
+    // Leer las notificaciones desde el archivo
+    let notificaciones = {};
+    if (fs.existsSync(notificacionesFile)) {
+      notificaciones = JSON.parse(fs.readFileSync(notificacionesFile));
+    }
+
+    // Crear notificación para todos los recolectores en el archivo
+    const mensajes_recolector_id = 6;  // ID del mensaje "Hay nuevas rutas!"
+    const recolectores = await Recolector.findAll();  // Obtén todos los recolectores
+
+    for (const recolector of recolectores) {
+      if (!notificaciones[recolector.id]) {
+        notificaciones[recolector.id] = [];
+      }
+      notificaciones[recolector.id].push({
+        mensajes_recoleccion_id: mensajes_recolector_id,
+        fecha_notificacion: new Date()
+      });
+    }
+
+    // Guardar las notificaciones en el archivo
+    fs.writeFileSync(notificacionesFile, JSON.stringify(notificaciones));
+
     // Enviar una respuesta al cliente
-    res.json({ message: "Solicitud de recolección enviada correctamente" });
+    res.json({ 
+      message: "Solicitud de recolección enviada correctamente", 
+      solicitud: recoleccion  // Enviar la solicitud creada como parte de la respuesta
+    });
   } catch (error) {
     console.error('Error al guardar la solicitud de recolección:', error);
     res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
   }
 });
-
 
 // Ruta para obtener solicitudes de recolección pendientes
 app.get('/solicitudes-pendientes', async (req, res) => {
@@ -573,7 +600,7 @@ app.get('/solicitudes-pendientes', async (req, res) => {
       },
       include: [{
         model: Restaurante,
-        attributes: ['latitude', 'longitude', 'direccion'],
+        attributes: ['nombre', 'latitude', 'longitude', 'direccion'], // Incluye 'nombre'
       }],
     });
 
@@ -605,36 +632,96 @@ async function verificarRecolector(req, res, next) {
   }
 }
 
-// Ruta para aceptar la recolección
-// Ruta para aceptar la recolección
-app.post('/aceptar-recoleccion', verificarToken, verificarRecolector, async (req, res) => {
-  const { recoleccion_id } = req.body;
-  if (!recoleccion_id) {
-    return res.status(400).json({ error: 'ID de recolección es requerido' });
+app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
+  console.log("Datos recibidos en la solicitud:", req.body);
+  const { direccion, restaurantes_id } = req.body;
+  console.log("Dirección recibida:", direccion);
+
+  try {
+    // Obtener las coordenadas de la dirección
+    const coordenadas = await obtenerCoordenadas(direccion);
+
+    // Verifica si las coordenadas son válidas
+    if (coordenadas.lat === null || coordenadas.lon === null) {
+      console.error("Coordenadas no disponibles para la dirección proporcionada.");
+      return res.status(400).json({ error: 'No se pudieron obtener coordenadas para la dirección proporcionada.' });
+    }
+
+    // Mostrar las coordenadas
+    console.log("Coordenadas obtenidas:", coordenadas);
+
+    // Actualizar las coordenadas en la tabla restaurantes
+    await Restaurante.update(
+      { latitude: coordenadas.lat, longitude: coordenadas.lon },
+      { where: { id: restaurantes_id } }
+    );
+
+    // Crear la solicitud de recolección con la fecha y hora actual
+    const recoleccion = await Recoleccion.create({
+      restaurantes_id: restaurantes_id,
+      fecha_solicitud: new Date(),  // Registra la fecha y hora de la solicitud
+      estado: 'pendiente'
+    });
+
+    // Obtener el mensaje con id = 6 de la tabla mensajes_recoleccion
+    const mensajeId = 6;
+    const mensaje = await MensajeRecoleccion.findByPk(mensajeId);
+
+    // Verificar si el mensaje existe
+    if (!mensaje) {
+      return res.status(404).json({ error: 'Mensaje no encontrado' });
+    }
+
+    // Enviar la respuesta al cliente con la solicitud y el mensaje
+    res.json({ 
+      message: "Solicitud de recolección enviada correctamente", 
+      solicitud: recoleccion,  // Enviar la solicitud creada como parte de la respuesta
+      mensaje: mensaje.texto   // Enviar el mensaje obtenido
+    });
+
+  } catch (error) {
+    console.error('Error al guardar la solicitud de recolección:', error);
+    res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
   }
+});
+
+// Ruta para aceptar múltiples recolecciones
+app.post('/aceptar-recolecciones', verificarToken, verificarRecolector, async (req, res) => {
+  const { recolecciones_ids } = req.body;
+  if (!Array.isArray(recolecciones_ids) || recolecciones_ids.length === 0) {
+      return res.status(400).json({ error: 'IDs de recolección son requeridos' });
+  }
+  
   const recolectorId = req.recolector.id; // Obtén el ID del recolector desde req.recolector
   if (!recolectorId) {
-    return res.status(401).json({ error: 'No autorizado' });
+      return res.status(401).json({ error: 'No autorizado' });
   }
+  
   try {
-    // Encuentra la recolección por su ID
-    const recoleccion = await Recoleccion.findByPk(recoleccion_id);
-    
-    if (!recoleccion) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
-    }
-    if (recoleccion.estado !== 'pendiente') {
-      return res.status(400).json({ error: 'La solicitud ya está en proceso o completada' });
-    }
-    // Actualiza el estado de la recolección y asigna el recolector
-    await recoleccion.update({
-      estado: 'en proceso',
-      recolectores_id: recolectorId
-    });
-    res.json({ message: 'Solicitud aceptada y en proceso' });
+      // Encuentra las recolecciones por sus IDs
+      const recolecciones = await Recoleccion.findAll({
+          where: {
+              id: recolecciones_ids,
+              estado: 'pendiente'
+          }
+      });
+      
+      if (recolecciones.length === 0) {
+          return res.status(404).json({ error: 'No se encontraron solicitudes pendientes' });
+      }
+      
+      // Actualiza el estado de las recolecciones y asigna el recolector
+      await Promise.all(recolecciones.map(recoleccion =>
+          recoleccion.update({
+              estado: 'en proceso',
+              recolectores_id: recolectorId
+          })
+      ));
+      
+      res.json({ message: 'Solicitudes aceptadas y en proceso' });
   } catch (error) {
-    console.error('Error al aceptar la recolección:', error);
-    res.status(500).json({ error: 'Error al aceptar la recolección' });
+      console.error('Error al aceptar las recolecciones:', error);
+      res.status(500).json({ error: 'Error al aceptar las recolecciones' });
   }
 });
 
@@ -787,42 +874,49 @@ app.post('/calificar-recolector', async (req, res) => {
   }
 });
 
-app.get('/mensaje-recoleccion', async (req, res) => {
+// Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
+// Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
+app.get('/notificaciones-recolector', verificarToken, verificarRecolector, async (req, res) => {
   try {
-    // Obtener el mensaje con id = 1
-    const mensaje = await MensajeRecoleccion.findOne({ where: { id: 1 } });
-
-    if (!mensaje) {
-      return res.status(404).json({ error: "Mensaje no encontrado" });
-    }
-
-    res.json({ success: true, mensaje: mensaje.texto });
-  } catch (error) {
-    console.error('Error al obtener el mensaje de recolección:', error);
-    res.status(500).json({ error: 'Error al obtener el mensaje de recolección' });
-  }
-});
-
-// Endpoint para obtener los mensajes relacionados con acciones del restaurante
-app.get('/mensajes-recoleccion', async (req, res) => {
-  try {
-    // Obtener todos los mensajes relacionados con recolección de residuos
-    const mensajes = await MensajeRecoleccion.findAll({
-      order: [['id', 'ASC']],  // Obtener mensajes en el orden de las acciones
+    // Verificar si hay alguna solicitud pendiente para el recolector
+    const solicitudesPendientes = await Recoleccion.findAll({
+      where: { estado: 'pendiente' },
+      order: [['fecha_solicitud', 'DESC']]
     });
 
-    if (!mensajes.length) {
-      return res.status(404).json({ error: "No hay mensajes de recolección disponibles" });
+    // Si hay solicitudes pendientes, enviar el mensaje con id = 6
+    if (solicitudesPendientes.length > 0) {
+      const mensaje = await MensajeRecoleccion.findByPk(6);
+      res.json({
+        nuevaSolicitud: true,
+        mensaje: mensaje.texto,
+        fechaHora: new Date().toISOString()
+      });
+    } else {
+      res.json({ nuevaSolicitud: false });
     }
-
-    // Enviar los mensajes al cliente
-    res.json({ success: true, mensajes });
   } catch (error) {
-    console.error('Error al obtener los mensajes de recolección:', error);
-    res.status(500).json({ error: 'Error al obtener los mensajes de recolección' });
+    console.error('Error al obtener las notificaciones:', error);
+    res.status(500).json({ error: 'Error al obtener las notificaciones' });
   }
 });
 
+// Ruta para obtener un mensaje de recolección por ID
+app.get('/mensaje-recoleccion/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const mensaje = await MensajeRecoleccion.findByPk(id);
+
+    if (!mensaje) {
+      return res.status(404).json({ message: 'Mensaje no encontrado' });
+    }
+
+    res.json(mensaje);
+  } catch (error) {
+    console.error('Error al obtener el mensaje de recolección:', error);
+    res.status(500).json({ error: 'Ocurrió un error al obtener el mensaje de recolección' });
+  }
+});
 
 app.get('/notificacion-consejo', async (req, res) => {
   try {
@@ -851,7 +945,6 @@ app.get('/usuarios', async (req, res) => {
     res.status(500).json({ error: 'Error en el servidor' });
   }
 });
-
 
 // Ruta para cerrar sesión
 app.post('/logout', (req, res) => {

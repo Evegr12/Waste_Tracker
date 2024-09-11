@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="mapa.css">
     <style>
         #map {
-            height: 800px;
+            height: 700px;
             width: 100%;
         }
     </style>
@@ -23,66 +23,153 @@
         </nav>
     </header>
 
-    <center><h1>Solicitudes pendientes</h1></center>
+    <center><h1>Solicitudes de Recolección Pendientes</h1></center>
     <div id="map"></div>
+    <button onclick="confirmarAceptacion()">Confirmar Aceptación</button>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         // Inicializa el mapa
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
+
         // Agrega una capa de tile map
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+
+        // Icono para solicitudes pendientes
+        const iconPending = L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Icono para solicitudes aceptadas
+        const iconAccepted = L.icon({
+            iconUrl: 'marker-icon-red.png', // Ruta local del icono aceptado
+            iconRetinaUrl: 'img/marker-icon-red-2x.png',
+            shadowUrl: 'img/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Objeto para almacenar marcadores con el ID de la solicitud como clave
+        const markers = {};
+
         // Obtén los datos de solicitudes pendientes
-        fetch('/solicitudes-pendientes')
-            .then(response => response.json())
-            .then(data => {
-                data.forEach(request => {
-                    if (request.restaurante.latitude && request.restaurante.longitude) {
-                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude])
-                            .addTo(map)
-                            .bindPopup(`<b>Solicitud ID:</b> ${request.id}<br><b>Dirección:</b> ${request.restaurante.direccion}<br><button onclick="aceptarRecoleccion(${request.id})">Aceptar Recolección</button>`);
-                    }
-                });
-            })
-            .catch(error => console.error('Error fetching requests:', error));
-            function aceptarRecoleccion(recoleccionId) {
+        fetch('/solicitudes-pendientes', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(request => {
+                if (request.restaurante.latitude && request.restaurante.longitude) {
+                    const popupContent = `
+                        <b>Restaurante:</b> ${request.restaurante.nombre}<br>
+                        <b>Dirección:</b> ${request.restaurante.direccion}<br>
+                        <div class="popup-buttons">
+                            <input type="checkbox" id="accept-${request.id}"> Aceptar
+                        </div>
+                    `;
+                    // Crear un marcador y agregarlo al mapa
+                    const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
+                        .addTo(map)
+                        .bindPopup(popupContent);
+
+                    // Guardar el marcador en el objeto `markers` con el ID de la solicitud
+                    markers[request.id] = { marker, accepted: false };
+                }
+            });
+        })
+        .catch(error => console.error('Error fetching requests:', error));
+
+        async function confirmarAceptacion() {
             const authToken = localStorage.getItem('token'); // Obtener el token de localStorage
             if (!authToken) {
                 alert('No estás autenticado. Por favor, inicia sesión.');
                 return;
             }
-            fetch('/aceptar-recoleccion', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`
-                },
-                body: JSON.stringify({ recoleccion_id: recoleccionId })
-            })
-            .then(response => response.json())
-            .then(data => {
+
+            // Obtener IDs de solicitudes aceptadas
+            const acceptedIds = Object.keys(markers).filter(id => {
+                const checkbox = document.getElementById(`accept-${id}`);
+                return checkbox && checkbox.checked;
+            });
+
+            if (acceptedIds.length === 0) {
+                alert('No has seleccionado ninguna solicitud para aceptar.');
+                return;
+            }
+
+            try {
+                // Aceptar las recolecciones
+                const response = await fetch('/aceptar-recolecciones', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ recolecciones_ids: acceptedIds })
+                });
+                const data = await response.json();
+
                 if (data.message) {
                     alert(data.message);
-                    window.location.href = 'ruta.html'; // Redirigir al mapa después de aceptar
+                    // Actualiza el icono de los marcadores aceptados
+                    acceptedIds.forEach(id => {
+                        if (markers[id]) {
+                            markers[id].marker.setIcon(iconAccepted);
+                            markers[id].accepted = true; // Marcar como aceptado
+                            const checkbox = document.getElementById(`accept-${id}`);
+                            if (checkbox) checkbox.disabled = true; // Deshabilitar el checkbox
+                        }
+                    });
+
+                    // Obtener el mensaje con ID=8
+                    const mensajeResponse = await fetch('/mensaje-recoleccion/8', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+                    const mensaje = await mensajeResponse.json();
+
+                    // Guardar el mensaje en el localStorage
+                    guardarNotificacion(mensaje.texto, new Date().toLocaleString(), 'recolector');
+
+                    // Espera un momento antes de redirigir para asegurar que el mapa se actualice
+                    setTimeout(() => {
+                        window.location.href = 'notificacionesRecolector.html'; // Redirige a la página de notificaciones
+                    }, 500);
                 } else {
-                    alert('Error al aceptar la recolección.');
+                    alert('Error al aceptar las recolecciones.');
                 }
-            })
-            .catch(error => {
-                console.error('Error al aceptar la recolección:', error);
-                alert('Hubo un error al aceptar la recolección. Por favor, intenta de nuevo.');
-            });
+            } catch (error) {
+                console.error('Error al aceptar las recolecciones:', error);
+                alert('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.');
+            }
+        }
+
+        // Función para guardar notificaciones en el localStorage
+        function guardarNotificacion(mensaje, fechaHora, tipo) {
+            let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+            notificaciones.push({ mensaje, fechaHora, tipo });
+            localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
         }
     </script>
 
     <footer>
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
+            <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
             <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </footer>
-
 </body>
 </html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -25,6 +25,9 @@
         <div class="notifications">
             <h2>Notificaciones</h2>
             <!-- Aquí se agregarán las notificaciones dinámicamente -->
+            <div class="notifications-list">
+                <!-- Aquí se agregarán las notificaciones dinámicamente -->
+            </div>
         </div>
     </main>
 
@@ -38,81 +41,34 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const notificacion = localStorage.getItem('notificacionRecoleccion');
-            if (notificacion) {
-                mostrarNotificacion(notificacion);  // Mostrar la notificación almacenada
-            } else {
-                console.log('No hay notificaciones nuevas');
-            }
+            const notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+            notificaciones.forEach(notificacion => {
+                mostrarNotificacion(notificacion.mensaje, notificacion.fechaHora);
+            });
         });
 
-        function mostrarNotificacionesAcciones(mensajes) {
-            const notificationContainer = document.querySelector('.notifications');
-            mensajes.forEach(mensaje => {
-                const notificationItem = document.createElement('div');
-                notificationItem.classList.add('notification');
-                notificationItem.innerHTML = `
-                <p class="message">${mensaje.texto}</p>
+        function mostrarNotificacion(mensaje, fechaHora) {
+            const notificationList = document.querySelector('.notifications-list'); // Cambiar para apuntar a .notifications-list
+
+            // Crear elemento de notificación
+            const notificationItem = document.createElement('div');
+            notificationItem.classList.add('notification');
+            notificationItem.innerHTML = `
+                <p class="message">${mensaje}</p>
                 <div class="datetime">
-                    <span class="date">Fecha no especificada</span>
-                    <span class="time">Hora no especificada</span>
-                </div>
-                `;
-                notificationContainer.appendChild(notificationItem);
-            });
-            }
-
-        function obtenerMensajesRecoleccion() {
-            fetch('/mensajes-recoleccion', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarNotificacionesAcciones(data.mensajes);
-                } else {
-                    console.error('Error en el servidor:', data.error);
-                }
-            })
-            .catch(error => console.error('Error fetching mensajes de recolección:', error));
-        }
-
-        function mostrarNotificacionConsejo(consejo) {
-            const consejoContainer = document.querySelector('.consejo-notification');
-            consejoContainer.innerHTML = `
-                <div class="notification">
-                <p class="message">${consejo}</p>
+                    <span class="date-time">${fechaHora}</span>
                 </div>
             `;
-            }
 
-        function obtenerConsejoAleatorio() {
-            fetch('/notificacion-consejo', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                mostrarNotificacionConsejo(data.consejo);
-                } else {
-                console.error('Error en el servidor:', data.error);
-                }
-            })
-            .catch(error => console.error('Error fetching consejo:', error));
+            // Prepend para que las notificaciones recientes se muestren en la parte superior
+            notificationList.prepend(notificationItem);
+
+            // Limitar a las últimas 12 notificaciones
+            if (notificationList.children.length > 12) {
+                notificationList.removeChild(notificationList.lastChild);
+            }
         }
 
-        // Llamar al obtener consejos al iniciar sesión o al cargar la página
-        obtenerConsejoAleatorio();
-
-        // Llamar a obtener notificaciones de acciones cuando el restaurante realiza una acción o necesita revisar sus notificaciones
-        obtenerMensajesRecoleccion();
     </script>
 </body>
 </html>
-
