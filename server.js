@@ -526,6 +526,32 @@ app.get('/api/restaurante', verificarToken, async (req, res) => {
 
 const notificacionesFile = path.join(__dirname, 'notificaciones.json');
 
+// Ruta para verificar si un restaurante tiene una solicitud pendiente
+app.get('/solicitud-actual/:restaurantes_id', async (req, res) => {
+  const { restaurantes_id } = req.params;
+
+  try {
+    // Buscar la solicitud del restaurante con estado "pendiente"
+    const solicitudPendiente = await Recoleccion.findOne({
+      where: {
+        restaurantes_id: restaurantes_id,
+        estado: 'pendiente'
+      }
+    });
+
+    if (solicitudPendiente) {
+      // Si hay una solicitud pendiente
+      return res.json({ tieneSolicitudPendiente: true });
+    } else {
+      // Si no hay solicitud pendiente
+      return res.json({ tieneSolicitudPendiente: false });
+    }
+  } catch (error) {
+    console.error('Error al buscar la solicitud:', error);
+    return res.status(500).json({ error: 'Error del servidor al buscar la solicitud' });
+  }
+});
+
 app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
   console.log("Datos recibidos en la solicitud:", req.body);
   const { direccion, restaurantes_id } = req.body;

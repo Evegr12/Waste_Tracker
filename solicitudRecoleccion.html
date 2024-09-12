@@ -44,9 +44,9 @@
     </footer>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function() {
     const toggleSwitch = document.getElementById('toggle');
-    const confirmButton = document.querySelector('.confirm-btn'); // Mueve esto dentro del DOMContentLoaded
+    const confirmButton = document.querySelector('.confirm-btn');
     confirmButton.style.opacity = '0.5';
 
     // Evento para manejar el cambio de estado del switch
@@ -83,6 +83,31 @@
         localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
     }
 
+    // Función para verificar si ya existe una solicitud activa o pendiente
+    async function verificarSolicitudExistente() {
+        const restaurantes_id = localStorage.getItem('restaurantes_id');
+        
+        try {
+            const response = await fetch(`http://localhost:8080/solicitud-actual/${restaurantes_id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error del servidor: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.tieneSolicitudPendiente;
+        } catch (error) {
+            console.error('Error al verificar la solicitud existente:', error);
+            return false;
+        }
+    }
+
     // Al hacer clic en el botón de confirmación
     confirmButton.addEventListener('click', async function(event) {
         if (!toggleSwitch.checked) {
@@ -90,13 +115,22 @@
             alert('Por favor, activa el switch para confirmar la recolección.');
             return;
         }
+
+        // Verificar si ya hay una solicitud activa
+        const tieneSolicitudPendiente = await verificarSolicitudExistente();
+        if (tieneSolicitudPendiente) {
+            alert('Ya tienes una solicitud de recolección pendiente. Por favor, espera a que sea completada antes de realizar otra.');
+            return;
+        }
+
         try {
             // Obtener coordenadas del usuario
             const coordenadas = await obtenerCoordenadas();
-            
+
             // Obtener el ID del restaurante y la dirección desde el localStorage
             const restaurantes_id = localStorage.getItem('restaurantes_id');
             const direccion = localStorage.getItem('direccion');
+
             // Validar que ambos valores existan antes de enviar la solicitud
             if (!restaurantes_id || !direccion) {
                 alert('Error: No se pudo encontrar la información del restaurante o la dirección. Por favor, revisa e intenta de nuevo.');
