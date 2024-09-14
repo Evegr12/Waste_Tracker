@@ -55,11 +55,16 @@ nav a {
 }
 
 nav img {
-    width: 34px;
-    height: 36px;
+    width: 48px;
+    height: 50px;
     cursor: pointer;
     transition: transform 0.3s ease;
     margin-right: 30px;
+}
+
+.calificaciones{
+    width: 100px !important; 
+    height: 70px !important;
 }
 
 nav img:hover {
@@ -86,9 +91,9 @@ main img {
 }
 
 .mapa, .calificaciones {
-    width: 120px;
-    height: 110px;
-    margin: 20px;
+    width: 12px;
+    height: 11px;
+    margin: 5px;
     border-color: #5b846c;
 }
 
@@ -102,14 +107,14 @@ footer {
     bottom: 0;
     width: 100%;
     background-color: #ffffff;
-    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -2px 1px rgba(0, 0, 0, 0.1);
     z-index: 1000;
 }
 
 .footer-nav {
     display: flex;
     justify-content: space-around;
-    padding: 10px 0;
+    padding: 5px 0;
 }
 
 .footer-nav a {
@@ -125,9 +130,37 @@ footer {
     height: 35px;
     cursor: pointer;
     transition: transform 0.3s ease;
-    margin-left: 60px;
+    margin-left: 40px;
 }
 
 .footer-nav img:hover {
     transform: scale(1.3);
+}
+
+
+/*tooltip*/
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 100px;
+    background-color: rgb(215, 215, 215);
+    color: #2e2c2c;
+    text-align: center;
+    border-radius: 10px;
+    padding: 5px 0;
+    
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 5;
+    bottom: 130%;/*distancia entre el mensaje y el botón*/
+    left: 50%;
+    margin-left: -50px;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
 }

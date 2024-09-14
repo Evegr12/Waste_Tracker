@@ -88,7 +88,7 @@
         const restaurantes_id = localStorage.getItem('restaurantes_id');
         
         try {
-            const response = await fetch(`http://localhost:8080/solicitud-actual/${restaurantes_id}`, {
+            const response = await fetch(`/solicitud-actual/${restaurantes_id}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + localStorage.getItem('token'),

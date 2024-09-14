@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    
     <title>Mapa de Solicitudes de Recolección</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="mapa.css">
@@ -10,6 +9,14 @@
         #map {
             height: 700px;
             width: 100%;
+        }
+        /* Mejora visual para los botones de checkbox */
+        .popup-buttons {
+            margin-top: 10px;
+        }
+        .accepted-popup {
+            background-color: lightgreen;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -21,45 +28,42 @@
         </div>
         <nav>
             <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones"></a>
+            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
 
-    <center><h1>Solicitudes de Recolección Pendientes</h1></center>
+    <center><h1>Solicitudes de Recolección</h1></center>
     <div id="map"></div>
-    <button onclick="confirmarAceptacion()">Confirmar Aceptación</button>
-
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         // Inicializa el mapa
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
-
+        
         // Agrega una capa de tile map
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
+        
         // Icono para solicitudes pendientes
         const iconPending = L.icon({
-            iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        // Icono para solicitudes aceptadas
-        const iconAccepted = L.icon({
             iconUrl: 'marker-icon-red.png',
-            iconRetinaUrl: 'img/marker-icon-red-2x.png',
-            shadowUrl: 'img/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
             popupAnchor: [1, -34],
             shadowSize: [41, 41]
         });
-
+        
+        // Icono para solicitudes aceptadas (cambio de color para mejor visibilidad)
+        const iconAccepted = L.icon({
+            iconUrl: 'marker-icon-purple.png', // Cambia el URL del ícono a uno rojo
+            iconSize: [75, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
         const markers = {};
-
+        
         fetch('/solicitudes-pendientes', {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -67,41 +71,36 @@
         })
         .then(response => response.json())
         .then(data => {
-            data.forEach(request => {
-                if (request.restaurante.latitude && request.restaurante.longitude) {
-                    const popupContent = `
-                        <b>Restaurante:</b> ${request.restaurante.nombre}<br>
-                        <b>Dirección:</b> ${request.restaurante.direccion}<br>
-                        <div class="popup-buttons">
-                            <input type="checkbox" id="accept-${request.id}"> Aceptar
-                        </div>
-                    `;
-                    const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
-                        .addTo(map)
-                        .bindPopup(popupContent);
-                    markers[request.id] = { marker, accepted: false };
-                }
-            });
+            console.log(data);  // Inspecciona la respuesta para verificar si es un arreglo
+            if (Array.isArray(data)) {
+                data.forEach(request => {
+                    if (request.restaurante.latitude && request.restaurante.longitude) {
+                        const popupContent = `
+                            <p class="data-restaurante"><b>Restaurante:</b> ${request.restaurante.nombre}<br> <b>Dirección:</b> ${request.restaurante.direccion}</p>
+                            <div class="popup-buttons">
+                                <button class="aceptar-recoleccion" onclick="confirmarAceptacion(${request.id})">Aceptar</button>
+                            </div>
+                        `;
+                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
+                            .addTo(map)
+                            .bindPopup(popupContent);
+                        markers[request.id] = { marker, accepted: false };
+                    }
+                });
+            } else {
+                console.error('Error: La respuesta no es un arreglo', data);
+            }
         })
         .catch(error => console.error('Error fetching requests:', error));
 
-        async function confirmarAceptacion() {
+        
+        async function confirmarAceptacion(id) {
             const authToken = localStorage.getItem('token');
             if (!authToken) {
                 alert('No estás autenticado. Por favor, inicia sesión.');
                 return;
             }
-
-            const acceptedIds = Object.keys(markers).filter(id => {
-                const checkbox = document.getElementById(`accept-${id}`);
-                return checkbox && checkbox.checked;
-            });
-
-            if (acceptedIds.length === 0) {
-                alert('No has seleccionado ninguna solicitud para aceptar.');
-                return;
-            }
-
+        
             try {
                 const response = await fetch('/aceptar-recolecciones', {
                     method: 'POST',
@@ -109,34 +108,35 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ recolecciones_ids: acceptedIds })
+                    body: JSON.stringify({ recoleccion_id: id })
                 });
                 const data = await response.json();
-
+        
                 if (data.message) {
                     alert(data.message);
-
-                    acceptedIds.forEach(async (id) => {
-                        if (markers[id]) {
-                            markers[id].marker.setIcon(iconAccepted);
-                            markers[id].accepted = true;
-                            const checkbox = document.getElementById(`accept-${id}`);
-                            if (checkbox) checkbox.disabled = true;
-
-                            // Enviar notificación al restaurante (notificación con ID=2)
-                            const mensajeResponseRestaurante = await fetch(`/mensaje-recoleccion/2`, {
-                                method: 'GET',
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`
-                                }
-                            });
-                            const mensajeRestaurante = await mensajeResponseRestaurante.json();
-
-                            // Guardar notificación del restaurante
-                            guardarNotificacionRestaurante(id, mensajeRestaurante.texto, new Date().toLocaleString(), 'restaurante');
-                        }
-                    });
-
+        
+                    if (markers[id]) {
+                        markers[id].marker.setIcon(iconAccepted); // Cambia el ícono a uno aceptado
+                        markers[id].accepted = true;
+        
+                        // Cambia el estilo del popup para mostrar que está aceptado
+                        const popup = markers[id].marker.getPopup();
+                        popup.setContent(`<div class="accepted-popup"><b>Solicitud aceptada</b></div>`);
+                        markers[id].marker.bindPopup(popup);
+        
+                        // Enviar notificación al restaurante (notificación con ID=2)
+                        const mensajeResponseRestaurante = await fetch(`/mensaje-recoleccion/2`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${authToken}`
+                            }
+                        });
+                        const mensajeRestaurante = await mensajeResponseRestaurante.json();
+        
+                        // Guardar notificación del restaurante
+                        guardarNotificacionRestaurante(id, mensajeRestaurante.texto, new Date().toLocaleString(), 'restaurante');
+                    }
+        
                     const mensajeResponse = await fetch('/mensaje-recoleccion/8', {
                         method: 'GET',
                         headers: {
@@ -144,41 +144,38 @@
                         }
                     });
                     const mensaje = await mensajeResponse.json();
-
+        
                     guardarNotificacion(mensaje.texto, new Date().toLocaleString(), 'recolector');
-
-                    setTimeout(() => {
-                        window.location.href = 'inicioRecolector.html'; 
-                    }, 500);
                 } else {
                     alert('Error al aceptar las recolecciones.');
                 }
             } catch (error) {
-                console.error('Error al aceptar las recolecciones:', error);
+                console.error('Error al aceptar la recoleccion:', error);
                 alert('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.');
             }
         }
-
+        
+        // Función para guardar la notificación en el recolector
         function guardarNotificacion(mensaje, fechaHora, tipo) {
             let notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
             notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
             localStorage.setItem('notificacionesRecolector', JSON.stringify(notificaciones));
         }
-
+        
+        // Función para guardar la notificación en el restaurante
         function guardarNotificacionRestaurante(id, mensaje, fechaHora, tipo) {
             let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
             notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
             localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
         }
-
-
-    </script>
-
+        </script>
+        
     <footer>
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
-            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
+            <a href="ruta.html"><img class="mapa" src="ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="calificacionesRecolector.html"><img class="calificaciones" src="califi-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
 </body>

@@ -16,15 +16,16 @@
         </div>
         <nav>
             <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones"></a>
-            <a href="historial.html"><img src="historial-icon.png" alt="Historial"></a>
             <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
 
     <main>
-        <div class="notificaciones-recolector">
+        <div class="notifications">
             <h2>Notificaciones</h2>
-            <!-- Aquí se agregarán las notificaciones dinámicamente -->
+            <div class="notificaciones-recolector">
+                <!-- Aquí se agregarán las notificaciones dinámicamente -->
+            </div>
         </div>
     </main>
 
@@ -32,7 +33,8 @@
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa"></a>
-            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
+            <a href="ruta.html"><img class="mapa" src="ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="calificacionesRecolector.html"><img class="calificaciones" src="califi-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
 
@@ -70,7 +72,12 @@ function mostrarNotificacion(mensaje, fechaHora) {
             <span class="date-time">${new Date(fechaHora).toLocaleString()}</span>
         </div>
     `;
-    notificationContainer.appendChild(notificationItem);
+    notificationContainer.prepend(notificationItem);
+
+    // Limitar a las últimas 12 notificaciones
+    if (notificationContainer.children.length > 12) {
+                notificationContainer.removeChild(notificationContainer.lastChild);
+            }
 }
 
 

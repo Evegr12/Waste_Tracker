@@ -1,22 +1,17 @@
-require('dotenv').config();
+const dotenv = require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
+const { Op } = require('sequelize');
 const multer = require('multer');
+const upload = multer();
 const bodyParser = require('body-parser');
 const path = require('path');
-const fs = require('fs'); // Importa el módulo 'fs' para trabajar con el sistema de archivos
+const fs = require('fs'); //'fs' sistema de archivos
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');  
 const app = express();
-const Nominatim = require('nominatim-client');
-
-// Configura EJS como motor de plantillas
-app.set('view engine', 'ejs');
-
-// Configura la carpeta de vistas
-app.set('views', path.join(__dirname, 'views'));
 
 // Verifica si la carpeta 'uploads' existe, si no, la crea
 const uploadDir = path.join(__dirname, 'uploads'); // Define la ruta de la carpeta 'uploads'
@@ -32,13 +27,6 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}_${file.originalname}`); // Nombre único del archivo
   }
-});
-
-const upload = multer({ storage });
-
-const nominatim = Nominatim.createClient({
-  useragent: "MyApp",             
-  referer: 'http://example.com', 
 });
 
 // Configuración de CORS
@@ -658,100 +646,47 @@ async function verificarRecolector(req, res, next) {
   }
 }
 
-app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
-  console.log("Datos recibidos en la solicitud:", req.body);
-  const { direccion, restaurantes_id } = req.body;
-  console.log("Dirección recibida:", direccion);
-
-  try {
-    // Obtener las coordenadas de la dirección
-    const coordenadas = await obtenerCoordenadas(direccion);
-
-    // Verifica si las coordenadas son válidas
-    if (coordenadas.lat === null || coordenadas.lon === null) {
-      console.error("Coordenadas no disponibles para la dirección proporcionada.");
-      return res.status(400).json({ error: 'No se pudieron obtener coordenadas para la dirección proporcionada.' });
-    }
-
-    // Mostrar las coordenadas
-    console.log("Coordenadas obtenidas:", coordenadas);
-
-    // Actualizar las coordenadas en la tabla restaurantes
-    await Restaurante.update(
-      { latitude: coordenadas.lat, longitude: coordenadas.lon },
-      { where: { id: restaurantes_id } }
-    );
-
-    // Crear la solicitud de recolección con la fecha y hora actual
-    const recoleccion = await Recoleccion.create({
-      restaurantes_id: restaurantes_id,
-      fecha_solicitud: new Date(),  // Registra la fecha y hora de la solicitud
-      estado: 'pendiente'
-    });
-
-    // Obtener el mensaje con id = 6 de la tabla mensajes_recoleccion
-    const mensajeId = 6;
-    const mensaje = await MensajeRecoleccion.findByPk(mensajeId);
-
-    // Verificar si el mensaje existe
-    if (!mensaje) {
-      return res.status(404).json({ error: 'Mensaje no encontrado' });
-    }
-
-    // Enviar la respuesta al cliente con la solicitud y el mensaje
-    res.json({ 
-      message: "Solicitud de recolección enviada correctamente", 
-      solicitud: recoleccion,  // Enviar la solicitud creada como parte de la respuesta
-      mensaje: mensaje.texto   // Enviar el mensaje obtenido
-    });
-
-  } catch (error) {
-    console.error('Error al guardar la solicitud de recolección:', error);
-    res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
-  }
-});
-
-// Ruta para aceptar múltiples recolecciones
+// Ruta para aceptar recolecciones
 app.post('/aceptar-recolecciones', verificarToken, verificarRecolector, async (req, res) => {
-  const { recolecciones_ids } = req.body;
-  if (!Array.isArray(recolecciones_ids) || recolecciones_ids.length === 0) {
-      return res.status(400).json({ error: 'IDs de recolección son requeridos' });
+  const { recoleccion_id } = req.body;
+
+  // Verificar que el recoleccion_id esté presente
+  if (!recoleccion_id) {
+      return res.status(400).json({ error: 'El ID de recolección es requerido' });
   }
-  
-  const recolectorId = req.recolector.id; // Obtén el ID del recolector desde req.recolector
+
+  const recolectorId = req.recolector.id; // Obtener el ID del recolector desde req.recolector
   if (!recolectorId) {
       return res.status(401).json({ error: 'No autorizado' });
   }
-  
+
   try {
-      // Encuentra las recolecciones por sus IDs
-      const recolecciones = await Recoleccion.findAll({
+      // Buscar la recolección que esté en estado "pendiente" por su ID
+      const recoleccion = await Recoleccion.findOne({
           where: {
-              id: recolecciones_ids,
+              id: recoleccion_id,
               estado: 'pendiente'
           }
       });
-      
-      if (recolecciones.length === 0) {
-          return res.status(404).json({ error: 'No se encontraron solicitudes pendientes' });
+
+      if (!recoleccion) {
+          return res.status(404).json({ error: 'No se encontró una solicitud pendiente con el ID proporcionado' });
       }
-      
-      // Actualiza el estado de las recolecciones y asigna el recolector
-      await Promise.all(recolecciones.map(recoleccion =>
-          recoleccion.update({
-              estado: 'en proceso',
-              recolectores_id: recolectorId
-          })
-      ));
-      
-      res.json({ message: 'Solicitudes aceptadas y en proceso' });
+
+      // Actualizar el estado de la recolección y asignar el recolector
+      await recoleccion.update({
+          estado: 'en proceso',
+          recolectores_id: recolectorId
+      });
+
+      res.json({ message: 'Solicitud aceptada y ahora está en proceso' });
   } catch (error) {
-      console.error('Error al aceptar las recolecciones:', error);
-      res.status(500).json({ error: 'Error al aceptar las recolecciones' });
+      console.error('Error al aceptar la recolección:', error);
+      res.status(500).json({ error: 'Error al aceptar la recolección' });
   }
 });
 
-//Ruta solicitudes aceptadas por e recolector
+// Ruta solicitudes aceptadas por el recolector
 app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (req, res) => {
   try {
     console.log('Recolector autenticado:', req.recolector);
@@ -759,7 +694,12 @@ app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (re
     const solicitudesAceptadas = await Recoleccion.findAll({
       where: {
         recolectores_id: req.recolector.id,
-        estado: 'en proceso'
+        // Incluye solicitudes con estado 'en proceso' y 'en camino'
+        [Op.or]: [
+          { estado: 'en proceso' },
+          { estado: 'en camino' },
+          {estado: 'llegada'}
+        ]
       },
       include: [{
         model: Restaurante,
@@ -778,10 +718,11 @@ app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (re
   }
 });
 
+
 // Endpoint para actualizar el estado de una solicitud
 app.patch('/update-status/:id', verificarToken, async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, fechaFinalizacion } = req.body; // Obtenemos 'fechaFinalizacion' del body
 
   try {
       const recoleccion = await Recoleccion.findByPk(id);
@@ -790,8 +731,11 @@ app.patch('/update-status/:id', verificarToken, async (req, res) => {
           return res.status(404).json({ error: 'Recolección no encontrada' });
       }
 
-      // Actualiza el estado de la solicitud
+      // Actualizar el estado y la fecha de recolección (finalización)
       recoleccion.estado = status;
+      if (status === 'finalizada' && fechaFinalizacion) {
+          recoleccion.fecha_recoleccion = fechaFinalizacion; // Almacena la fecha de finalización en 'fecha_recoleccion'
+      }
       await recoleccion.save();
 
       res.json({ success: true });
@@ -801,34 +745,36 @@ app.patch('/update-status/:id', verificarToken, async (req, res) => {
   }
 });
 
-app.get('/historial-recolecciones/:restaurantes_id', async (req, res) => {
-  const { restaurantes_id } = req.params;
+
+app.get('/historial-recolecciones/:restaurantesId', async (req, res) => {
+  const { restaurantesId } = req.params;
 
   try {
-      // Obtener todas las recolecciones finalizadas para el restaurante dado
       const recolecciones = await Recoleccion.findAll({
-        where: {
-          restaurantes_id: restaurantes_id,
-          estado: 'finalizada'
-        },
-        include: [
-          {
-            model: Recolector,  // Incluir el recolector
-            attributes: ['id'],  // Solo necesitamos el ID del recolector
-            include: [
-              {
-                model: Usuario,  // Incluir el usuario asociado al recolector
-                attributes: ['nombre'],  // Solo necesitamos el nombre del usuario (recolector)
+          where: {
+              restaurantes_id: restaurantesId,
+              estado: 'finalizada'
+          },
+          attributes: ['fecha_recoleccion'], // Usamos 'fecha_recoleccion' como la fecha finalizada
+          include: {
+              model: Recolector,
+              include: {
+                  model: Usuario,
+                  attributes: ['nombre']
               }
-            ]
           }
-        ]
       });
-            
-      res.json({ success: true, recolecciones });
+
+      res.json({
+          success: true,
+          recolecciones
+      });
   } catch (error) {
       console.error('Error al obtener el historial de recolecciones:', error);
-      res.status(500).json({ success: false, message: 'Error al obtener el historial de recolecciones' });
+      res.status(500).json({
+          success: false,
+          message: 'Error al obtener el historial de recolecciones.'
+      });
   }
 });
 

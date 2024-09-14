@@ -19,7 +19,8 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones" href="notificacionesRecolector.html"></a>
+            <a href="notificacionesRecolector.html"><img src="notificaciones.png" alt="Notificaciones"></a>
+            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
 
@@ -31,11 +32,39 @@
 
     <script>
         const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
-
+    
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
+    
+        // Definir íconos según el estado de la recolección
+        const iconAccepted = L.icon({
+            iconUrl: 'marker-icon-purple.png', // Para "aceptado"
+            iconSize: [75, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    
+        const iconOnTheWay = L.icon({
+            iconUrl: 'marker-icon-blue.png', // Para "en camino" y 'llegada'
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    
+        const iconCompleted = L.icon({
+            iconUrl: 'marker-icon-green.png', // Para "finalizado"
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+    
+        // Capa para los marcadores
+        const layerGroup = L.layerGroup().addTo(map);
+    
         // Mostrar las solicitudes aceptadas en el mapa
         fetch('/solicitudes-aceptadas', {
             headers: {
@@ -52,18 +81,35 @@
             if (Array.isArray(data)) {
                 data.forEach(request => {
                     if (request.restaurante.latitude && request.restaurante.longitude) {
+                        // ícono según el estado de la solicitud
+                        let icon = iconAccepted; // Por defecto, "aceptado"
+                        if (request.estado === 'en camino' || request.estado === 'llegada') {
+                            icon = iconOnTheWay;
+                        } else if (request.estado === 'finalizada') {
+                            icon = iconCompleted;
+                        }
+    
                         const popupContent = `
-                            <b>Restaurante:</b> ${request.restaurante.nombre}<br>
-                            <b>Dirección:</b> ${request.restaurante.direccion}<br>
+                            <p class="data-restaurante">
+                                <b class="data-restaurante">Restaurante:</b> ${request.restaurante.nombre}<br>
+                                <b class="data-restaurante">Dirección:</b> ${request.restaurante.direccion}
+                            </p>
+                            ${request.estado === 'en camino' ? `<b>ETA:</b> ${request.eta}<br>` : ''}
                             <div class="popup-buttons">
-                                <button class="cancel-button" onclick="updateStatus('${request.id}', 'pendiente')">Cancelar</button>
-                                <button class="finalize-button" onclick="updateStatus('${request.id}', 'en camino')">En camino</button>
-                                <button class="finalize-button" onclick="updateStatus('${request.id}', 'finalizada')">Finalizada</button>
+                                ${request.estado === 'en proceso' ? `<b class="solicitud-pendiente">Solicitud de recolección pendiente</b><br>
+                                    <button class="cancelar-button" onclick="updateStatus('${request.id}', 'pendiente')">Cancelar</button>
+                                    <button class="en-camino-button" onclick="updateStatus('${request.id}', 'en camino')">En camino</button><br>` : ''}
+                                ${request.estado === 'en camino' ? `<b class="solicitud-en-camino">Solicitud de recolección en camino</b><br>
+                                    <button class="llegue-button" onclick="updateStatus('${request.id}', 'llegada')">Ya llegué</button><br>` : ''}
+                                ${request.estado === 'llegada' ? `<b class="el-recolector-llego">Haz llegado al restaurante</b><br>
+                                    <button class="finalize-button" onclick="updateStatus('${request.id}', 'finalizada')">Finalizar recolección</button><br>` : ''}
+                                ${request.estado === 'finalizada' ? `<b class="solicitud-finalizada">Solicitud de recolección finalizada</b>` : ''}
                             </div>
                         `;
-
-                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude])
-                            .addTo(map)
+    
+                        // Agregar el marcador al mapa
+                        L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: icon })
+                            .addTo(layerGroup)
                             .bindPopup(popupContent);
                     }
                 });
@@ -74,21 +120,38 @@
         .catch(error => {
             console.error('Error fetching requests:', error);
         });
-
+    
+        // Función para actualizar el estado de la solicitud
         function updateStatus(requestId, status) {
+            const authToken = localStorage.getItem('token');
+            let eta = null;
+            let fechaFinalizacion = null;
+    
+            if (status === 'en camino') {
+                eta = prompt('Por favor ingrese la hora estimada de llegada (ETA):');
+            }
+    
+            if (status === 'finalizada') {
+                fechaFinalizacion = new Date().toISOString(); // Fecha y hora actuales en formato ISO
+            }
+    
             fetch(`/update-status/${requestId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Authorization': `Bearer ${authToken}`,
                 },
-                body: JSON.stringify({ status })
+                body: JSON.stringify({ status, eta, fechaFinalizacion })
             })
             .then(response => response.json())
-            .then(data => {
+            .then(async data => {
                 if (data.success) {
                     alert(`Estado actualizado a ${status}`);
-                    location.reload(); // Recarga la página para actualizar el mapa
+    
+                    // Manejo de notificaciones
+                    await handleNotifications(status, requestId, authToken);
+    
+                    //location.reload(); // Recarga la página para actualizar el mapa
                 } else {
                     alert('Error al actualizar el estado.');
                 }
@@ -97,12 +160,61 @@
                 console.error('Error al actualizar el estado:', error);
             });
         }
+    
+        // Función para manejar las notificaciones
+        async function handleNotifications(status, requestId, authToken) {
+            const notificaciones = {
+                'pendiente': { idRecolector: 12, idRestaurante: 11 },
+                'en camino': { idRecolector: 9, idRestaurante: 13 },
+                'llegada': { idRecolector: 14, idRestaurante: 4 },
+                'finalizada': { idRecolector: 10, idRestaurante: 5 }
+            };
+    
+            if (notificaciones[status]) {
+                const { idRecolector, idRestaurante } = notificaciones[status];
+    
+                // Notificaciones para el recolector
+                const mensajeRecolector = await fetchNotification(idRecolector, authToken);
+                guardarNotificacion(mensajeRecolector.texto, 'recolector');
+    
+                // Notificaciones para el restaurante
+                const mensajeRestaurante = await fetchNotification(idRestaurante, authToken);
+                guardarNotificacionRestaurante(mensajeRestaurante.texto, 'restaurante');
+            }
+        }
+    
+        // Función para obtener notificaciones
+        async function fetchNotification(id, authToken) {
+            const response = await fetch(`/mensaje-recoleccion/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            return response.json();
+        }
+    
+        // Función para guardar la notificación en el recolector
+        function guardarNotificacion(mensaje, tipo) {
+            let notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
+            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
+            localStorage.setItem('notificacionesRecolector', JSON.stringify(notificaciones));
+        }
+    
+        // Función para guardar la notificación en el restaurante
+        function guardarNotificacionRestaurante(mensaje, tipo) {
+            let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
+            localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
+        }
     </script>
+
     <footer>
         <nav class="footer-nav">
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
-            <a href="perfilRecolector.html"><img src="perfil-icon.png" alt="Perfil"></a>
+            <a href="ruta.html"><img class="mapa" src="ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="calificacionesRecolector.html"><img class="calificaciones" src="califi-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
 </body>

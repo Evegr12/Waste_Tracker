@@ -24,7 +24,6 @@
     <main>
         <div class="notifications">
             <h2>Notificaciones</h2>
-            <!-- Aquí se agregarán las notificaciones dinámicamente -->
             <div class="notifications-list">
                 <!-- Aquí se agregarán las notificaciones dinámicamente -->
             </div>
@@ -48,15 +47,14 @@
         });
 
         function mostrarNotificacion(mensaje, fechaHora) {
-            const notificationList = document.querySelector('.notifications-list'); // Cambiar para apuntar a .notifications-list
-
+            const notificationList = document.querySelector('.notifications-list');
             // Crear elemento de notificación
             const notificationItem = document.createElement('div');
             notificationItem.classList.add('notification');
             notificationItem.innerHTML = `
                 <p class="message">${mensaje}</p>
                 <div class="datetime">
-                    <span class="date-time">${fechaHora}</span>
+                    <span class="date-time">${new Date(fechaHora).toLocaleString()}</span>
                 </div>
             `;
 
