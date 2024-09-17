@@ -71,13 +71,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 if (data.token) {
                     localStorage.setItem('token', data.token);
-                    localStorage.setItem('restaurantes_id', data.restaurantes_id);
+                    localStorage.setItem('restaurantes_id', data.restaurantes_id || null);
+                    localStorage.setItem('usuarios_id', data.id);
+                    localStorage.setItem('direccion', data.direccion || null);
+
+                    // Guardar recolector_id si el usuario es un recolector
                     if (data.tipo_usuario === 'recolector') {
-                        localStorage.setItem('recolector_id', data.id);  // Cambiar data.recolector_id por data.id
+                        localStorage.setItem('recolector_id', data.recolector_id); // Asegúrate de guardar recolector_id desde la respuesta
                     }
-                    localStorage.setItem('usuarios_id', data.id);  // Cambiar data.usuarios_id por data.id
-                    localStorage.setItem('direccion', data.direccion);
-                    window.location.href = data.tipo_usuario === 'restaurante' ? 'inicioRestaurante.html' : 'inicioRecolector.html';
+
+                    // Redirigir a la página correspondiente según el tipo de usuario
+                    const redirectPage = data.tipo_usuario === 'restaurante' ? 'inicioRestaurante.html' : 'inicioRecolector.html';
+                    window.location.href = redirectPage;
                 }
             } catch (error) {
                 console.error('Error al iniciar sesión:', error);

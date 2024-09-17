@@ -1,17 +1,32 @@
+/* Estilos generales */
 body {
     font-family: Arial, sans-serif;
     background-color: #9cc1ab; 
+    margin: 0;
+    padding-top: 80px; /* Espacio para el header */
+    padding-bottom: 60px; /* Espacio para el footer */
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    margin: 0;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
-/* Estilos para el encabezado */
+/* Contenedor principal que no permite superposición */
+main {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow-y: auto; /* Permite scroll si es necesario */
+    box-sizing: border-box;
+}
+
+/* Encabezado */
 header {
     display: flex;
-    justify-content:space-between;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
     padding: 15px 30px;
@@ -21,6 +36,7 @@ header {
     position: fixed;
     top: 0;
     z-index: 1000;
+    height: 60px; /* Definir altura fija */
 }
 
 .logo {
@@ -36,7 +52,7 @@ header {
 }
 
 .logo h1 {
-    font-size: 24px;
+    font-size: 26px;
     margin: 0;
     font-weight: bold;
     letter-spacing: 1px;
@@ -45,7 +61,7 @@ header {
 nav {
     display: flex;
     align-items: center;
-    gap: 20px; /* Espacio entre iconos de navegación */
+    gap: 20px;
 }
 
 nav a {
@@ -67,76 +83,70 @@ nav img:hover {
     transform: scale(1.3);
 }
 
+/* Rating card */
 .rating-card {
     background-color: #f4f8f7;
     border-radius: 10px;
     padding: 20px;
-    width: 250px;
+    width: 100%; /* Se ajusta al ancho disponible */
+    max-width: 600px; /* Limitar el tamaño máximo */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
-    transform: scale(1.2);
+    margin-bottom: 20px; /* Espacio para no superponerse con otros elementos */
 }
 
-h3 {
-    margin-top: 0;
-    font-size: 1.2rem;
-    color: #333;
+/* Ajustes de la calificación y las barras */
+
+.rating-summary {
+    text-align: center;
+    margin-top: 10px;
 }
 
-.user-info {
+.stars {
+    color: gold;
+    font-size: 24px;
+}
+
+.rating-breakdown {
+    margin-top: 20px;
+}
+
+.rating-bar {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    margin: 10px 0;
+    margin-bottom: 10px;
 }
 
-.user-icon {
-    font-size: 1.5rem;
-    margin-right: 10px;
-    color: #555;
+.bar {
+    flex-grow: 1;
+    background-color: #e0e0e0;
+    margin: 0 10px;
+    height: 10px;
+    position: relative;
 }
 
-.user-name {
-    font-size: 1rem;
-    color: #333;
+.filled-bar {
+    height: 10px;
+    background-color: #ffd700;
 }
 
-.rating {
-    display: flex;
-    justify-content: center;
-    margin: 15px 0;
-}
-
-.star {
-    font-size: 2rem;
-    cursor: pointer;
-    color: #ddd;
-    transition: color 0.3s;
-}
-
-.star.selected,
-.star:hover,
-.star.hover ~ .star {
-    color: #f39c12; /* Color de estrella seleccionada */
+.rating-count {
+    width: 50px;
+    text-align: right;
 }
 
 
-.submitRating {
-    background-color: #f2eecb;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 8px 15px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: #333;
-    transition: background-color 0.3s;
+.rating-box {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 50%;
+    max-width: 600px;
+    margin: 0 auto;
 }
-
-.submitRating:hover {
-    background-color: #e5d9a3;
-}
-
-/* Estilos para el pie de página */
+/* Footer */
 footer {
     position: fixed;
     bottom: 0;
@@ -144,6 +154,7 @@ footer {
     background-color: #ffffff;
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1000;
+    height: 50px; /* Definir altura fija */
 }
 
 .footer-nav {
@@ -171,4 +182,31 @@ footer {
     transform: scale(1.3);
 }
 
+/* Ajustes adicionales */
+.comments-section {
+    margin-top: 20px; /* Espacio entre calificaciones y comentarios */
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
+.rating-box .comment {
+    padding: 10px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.comment p {
+    word-wrap: break-word;
+}
+
+.calificacion-card, .titulo-calificaciones {
+    text-align: justify;
+}
+
+
+@media (max-width: 768px) {
+    .rating-box {
+        width: 90%;
+    }
+}

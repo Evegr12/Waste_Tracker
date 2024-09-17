@@ -197,6 +197,10 @@ const Recoleccion = sequelize.define('recolecciones', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  comentario: {
+    type: DataTypes.STRING(255), // Campo para almacenar el comentario del restaurante
+    allowNull: true // El comentario es opcional
+  },
   estado: {
     type: DataTypes.STRING,
     defaultValue: 'pendiente',  // Estado: 'pendiente', 'en proceso', 'finalizada'
@@ -308,7 +312,6 @@ function verificarToken(req, res, next) {
   });
 }
 
-
 // Ruta para login
 app.post('/login', async (req, res) => {
   const { correo, contrasenia } = req.body;
@@ -325,6 +328,7 @@ app.post('/login', async (req, res) => {
       }
 
       const restaurante = await Restaurante.findOne({ where: { usuarios_id: user.id } });
+      const recolector = await Recolector.findOne({ where: { usuarios_id: user.id } }); // Buscar recolector asociado
 
       // Si el restaurante existe, se obtiene su dirección
       const direccion = restaurante ? restaurante.direccion : null;
@@ -334,6 +338,7 @@ app.post('/login', async (req, res) => {
         token, 
         tipo_usuario: user.tipo_usuario,
         restaurantes_id: restaurante ? restaurante.id : null,
+        recolector_id: recolector ? recolector.id : null,  // Incluir recolector_id si es recolector
         direccion: direccion // Incluye la dirección en la respuesta
       });
     } else {
@@ -344,7 +349,6 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
-
 
 // Ruta raíz, devuelve el archivo HTML principal
 app.get('/', function (req, res) {
@@ -755,7 +759,7 @@ app.get('/historial-recolecciones/:restaurantesId', async (req, res) => {
               restaurantes_id: restaurantesId,
               estado: 'finalizada'
           },
-          attributes: ['fecha_recoleccion'], // Usamos 'fecha_recoleccion' como la fecha finalizada
+          attributes: ['fecha_recoleccion'], //fecha finalizacion
           include: {
               model: Recolector,
               include: {
@@ -778,75 +782,41 @@ app.get('/historial-recolecciones/:restaurantesId', async (req, res) => {
   }
 });
 
-app.get('/obtener-recolector', async (req, res) => {
-  const recolectorId = req.query.recolectorId; // Asegúrate de que estás obteniendo el restauranteId de la consulta
-  if (!recolectorId) {
-    return res.status(400).json({ success: false, message: 'Falta el ID del restaurante' });
-  }
+// Endpoint para obtener la última recolección finalizada
+app.get('/recolecciones/ultima-finalizada/:restauranteId', verificarToken, async (req, res) => {
+  const { restauranteId } = req.params;
 
   try {
-    // Encuentra una recolección finalizada asociada al restaurante
     const recoleccion = await Recoleccion.findOne({
-      where: { 
+      where: {
+        restaurantes_id: restauranteId,
         estado: 'finalizada',
-        recolectorId: recolectorId
+        calificacion: null // Filtrar por recolecciones sin calificación
       },
+      order: [['fecha_solicitud', 'DESC']], // Ordenar por fecha de solicitud de manera descendente
       include: [
         {
-          model: Recolector, // Relación con el modelo Recolector
+          model: Recolector,
+          attributes: ['id'],
           include: [{
-            model: Usuario,  // Relación con el modelo Usuario
-            attributes: ['nombre'] // Obtener el nombre del recolector desde la tabla usuarios
+            model: Usuario,
+            attributes: ['nombre']
           }]
         }
       ]
     });
 
     if (!recoleccion) {
-      return res.status(404).json({ success: false, message: 'No se encontró una recolección finalizada para este restaurante' });
+      return res.status(404).json({ message: 'No hay recolecciones finalizadas sin calificar' });
     }
 
-    const recolectorNombre = recoleccion.recolector.user.nombre; // Acceso al nombre del recolector
-    const recolectorId = recoleccion.recolector.id;
-
-    res.json({ success: true, recolectorNombre, recolectorId });
+    res.json({ recoleccion }); // Asegúrate de devolver un objeto con la propiedad `recoleccion`
   } catch (error) {
-    console.error('Error al obtener el recolector:', error);
-    res.status(500).json({ success: false, message: 'Error al obtener el recolector' });
+    console.error('Error al obtener la última recolección finalizada:', error);
+    res.status(500).json({ error: 'Error al obtener la última recolección finalizada' });
   }
 });
 
-app.post('/calificar-recolector', async (req, res) => {
-  const { recolectorId, rating, restauranteId } = req.body; // Añadimos restauranteId desde el cuerpo de la solicitud
-
-  try {
-    if (!recolectorId || !rating || !restauranteId) {
-      return res.status(400).json({ success: false, message: 'Faltan datos necesarios' });
-    }
-
-    // Verifica si existe una recolección con el recolectorId, estado 'finalizada' y el restauranteId proporcionado
-    const recoleccion = await Recoleccion.findOne({
-      where: { recolectores_id: recolectorId, estado: 'finalizada', restaurantes_id: restauranteId }  // Añadimos el filtro de restauranteId
-    });
-
-    if (!recoleccion) {
-      return res.status(404).json({ success: false, message: 'No se encontró una recolección para calificar o ya está calificada' });
-    }
-
-    // Si existe la recolección, se procede a actualizar la calificación
-    await Recoleccion.update(
-      { calificacion: rating },
-      { where: { id: recoleccion.id } }  // Utilizamos el id de la recolección encontrada
-    );
-
-    res.json({ success: true, message: 'Calificación registrada exitosamente' });
-  } catch (error) {
-    console.error('Error al guardar la calificación:', error);
-    res.status(500).json({ success: false, message: 'Error al registrar la calificación' });
-  }
-});
-
-// Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
 // Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
 app.get('/notificaciones-recolector', verificarToken, verificarRecolector, async (req, res) => {
   try {
@@ -870,6 +840,91 @@ app.get('/notificaciones-recolector', verificarToken, verificarRecolector, async
   } catch (error) {
     console.error('Error al obtener las notificaciones:', error);
     res.status(500).json({ error: 'Error al obtener las notificaciones' });
+  }
+});
+
+app.post('/calificar/:recoleccionId', verificarToken, async (req, res) => {
+  const { recoleccionId } = req.params;
+  const { calificacion, comentario, fechaCalificacion } = req.body; // Añadir fechaCalificacion al body
+
+  try {
+    // Verificar que la calificación es un número válido (entre 1 y 5, por ejemplo)
+    if (typeof calificacion !== 'number' || calificacion < 1 || calificacion > 5) {
+      return res.status(400).json({ success: false, message: 'Calificación inválida' });
+    }
+
+    // Verificar que el comentario es una cadena de texto válida (puede ser opcional)
+    if (comentario && typeof comentario !== 'string') {
+      return res.status(400).json({ success: false, message: 'Comentario inválido' });
+    }
+
+    // Verificar que la fecha de calificación es una fecha válida (puede ser opcional)
+    if (fechaCalificacion && isNaN(Date.parse(fechaCalificacion))) {
+      return res.status(400).json({ success: false, message: 'Fecha de calificación inválida' });
+    }
+
+    // Buscar la recolección por ID
+    const recoleccion = await Recoleccion.findByPk(recoleccionId);
+    if (!recoleccion) {
+      return res.status(404).json({ success: false, message: 'Recolección no encontrada' });
+    }
+
+    // Actualizar la calificación, el comentario y la fecha de calificación (si están presentes)
+    recoleccion.calificacion = calificacion;
+    if (comentario) {
+      recoleccion.comentario = comentario; // Guardar el comentario
+    }
+
+    await recoleccion.save();
+
+   // Obtener la fecha actual para enviar en la respuesta
+  const fechaCalificacion = new Date().toLocaleDateString();
+
+
+    res.json({ success: true, message: 'Calificación, comentario y fecha guardados correctamente' });
+  } catch (error) {
+    console.error('Error al guardar la calificación:', error);
+    res.status(500).json({ success: false, message: 'Error al guardar la calificación' });
+  }
+});
+
+// Endpoint para que el recolector visualice sus calificaciones
+app.get('/calificaciones-recolector/:recolectorId', verificarToken, async (req, res) => {
+  const { recolectorId } = req.params;
+
+  try {
+      // Busca todas las recolecciones donde el recolector haya sido calificado
+      const recolecciones = await Recoleccion.findAll({
+          where: {
+              recolectores_id: recolectorId, // Cambiado a recolectores_id para coincidir con la base de datos
+              calificacion: {
+                  [Op.not]: null
+              }
+          },
+          include: [
+              {
+                  model: Restaurante,
+                  attributes: ['nombre']
+              }
+          ]
+      });
+
+      if (!recolecciones || recolecciones.length === 0) {
+          return res.status(404).json({ success: false, message: 'No se encontraron calificaciones.' });
+      }
+
+      res.json({
+          success: true,
+          calificaciones: recolecciones.map(recoleccion => ({
+              restaurante: recoleccion.restaurante.nombre,
+              calificacion: recoleccion.calificacion,
+              comentario: recoleccion.comentario || ' ',
+              fecha: recoleccion.createdAt
+          }))
+      });
+  } catch (error) {
+      console.error('Error al obtener las calificaciones:', error);
+      res.status(500).json({ success: false, message: 'Error al obtener las calificaciones' });
   }
 });
 

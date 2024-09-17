@@ -89,12 +89,20 @@
                             icon = iconCompleted;
                         }
     
+                        if (request.estado === 'en camino') {
+                            const eta = prompt('Por favor ingrese la hora estimada de llegada:');
+                            if (eta) {
+                                localStorage.setItem(`eta-${request.id}`, eta);  // Guardar la ETA localmente
+                            }
+                        }
+    
+                        const storedEta = localStorage.getItem(`eta-${request.id}`);  // Recuperar la hora almacenada
                         const popupContent = `
                             <p class="data-restaurante">
                                 <b class="data-restaurante">Restaurante:</b> ${request.restaurante.nombre}<br>
                                 <b class="data-restaurante">Dirección:</b> ${request.restaurante.direccion}
                             </p>
-                            ${request.estado === 'en camino' ? `<b>ETA:</b> ${request.eta}<br>` : ''}
+                            ${request.estado === 'en camino' ? `<b>ETA:</b> ${storedEta || 'No disponible'}<br>` : ''}
                             <div class="popup-buttons">
                                 ${request.estado === 'en proceso' ? `<b class="solicitud-pendiente">Solicitud de recolección pendiente</b><br>
                                     <button class="cancelar-button" onclick="updateStatus('${request.id}', 'pendiente')">Cancelar</button>
@@ -129,6 +137,9 @@
     
             if (status === 'en camino') {
                 eta = prompt('Por favor ingrese la hora estimada de llegada (ETA):');
+                if (eta) {
+                    localStorage.setItem(`eta-${requestId}`, eta); // Guardar ETA localmente
+                }
             }
     
             if (status === 'finalizada') {
@@ -151,7 +162,7 @@
                     // Manejo de notificaciones
                     await handleNotifications(status, requestId, authToken);
     
-                    //location.reload(); // Recarga la página para actualizar el mapa
+                    location.reload(2000); // Recarga la página para actualizar el mapa (2seg)
                 } else {
                     alert('Error al actualizar el estado.');
                 }
@@ -177,9 +188,17 @@
                 const mensajeRecolector = await fetchNotification(idRecolector, authToken);
                 guardarNotificacion(mensajeRecolector.texto, 'recolector');
     
-                // Notificaciones para el restaurante
+                // Recuperar la ETA almacenada para el restaurante
+                const storedEta = localStorage.getItem(`eta-${requestId}`);
                 const mensajeRestaurante = await fetchNotification(idRestaurante, authToken);
-                guardarNotificacionRestaurante(mensajeRestaurante.texto, 'restaurante');
+    
+                // Si es 'en camino' y el idRestaurante es 13, añade la ETA al mensaje
+                let mensajeRestauranteConEta = mensajeRestaurante.texto;
+                if (status === 'en camino' && idRestaurante === 13) {
+                    mensajeRestauranteConEta += `. Hora de llegada estimada: ${storedEta || 'No disponible'}`;
+                }
+    
+                guardarNotificacionRestaurante(mensajeRestauranteConEta, 'restaurante');
             }
         }
     
@@ -208,6 +227,7 @@
             localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
         }
     </script>
+    
 
     <footer>
         <nav class="footer-nav">

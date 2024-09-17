@@ -19,114 +19,7 @@
         </nav>
     </header>
 
-    <div class="rating-card">
-        <h3>Calificar Recolector</h3>
-        <div class="user-info">
-            <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
-            <span class="user-name">Recolector</span> <!--nombre del recolector dinámico -->
-        </div>
-        <div class="rating">
-            <span class="star" data-value="1">&#9733;</span>
-            <span class="star" data-value="2">&#9733;</span>
-            <span class="star" data-value="3">&#9733;</span>
-            <span class="star" data-value="4">&#9733;</span>
-            <span class="star" data-value="5">&#9733;</span>
-        </div>
-        <button class="submitRating">Enviar calificación</button>
-    </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const stars = document.querySelectorAll('.star');
-            const submitButton = document.querySelector('.submitRating'); // Cambiado a querySelector para seleccionar por clase
-            let selectedValue = 0; // Variable para almacenar la calificación seleccionada
-            
-            if (submitButton) { // Verifica que submitButton no sea null
-                stars.forEach(star => {
-                    star.addEventListener('mouseover', handleMouseOver);
-                    star.addEventListener('mouseout', handleMouseOut);
-                    star.addEventListener('click', handleClick);
-                });
-    
-                function handleMouseOver(event) {
-                    const value = event.target.getAttribute('data-value');
-                    setRating(value, true); // Muestra la calificación de la estrella sobre la que pasa el ratón
-                }
-    
-                function handleMouseOut() {
-                    setRating(selectedValue, false); // Restaura la calificación seleccionada
-                }
-    
-                function handleClick(event) {
-                    selectedValue = event.target.getAttribute('data-value'); // Actualiza la calificación seleccionada
-                    setRating(selectedValue, false); // Aplica la calificación seleccionada
-                    console.log('Calificación seleccionada:', selectedValue); // Verifica que se seleccionó una calificación
-                }
-    
-                function setRating(value, isHover) {
-                    stars.forEach(star => {
-                        const starValue = parseInt(star.getAttribute('data-value'));
-                        if (starValue <= value) {
-                            star.classList.add('selected');
-                        } else {
-                            star.classList.remove('selected');
-                        }
-    
-                        if (isHover && starValue <= value) {
-                            star.classList.add('hover'); // Aplica el estilo de hover
-                        } else {
-                            star.classList.remove('hover'); // Remueve el estilo de hover
-                        }
-                    });
-                }
-    
-                // Función para enviar la calificación al servidor
-                function submitRating() {
-                    if (selectedValue === 0) {
-                        alert('Por favor selecciona una calificación antes de enviar.');
-                        return;
-                    }
-    
-                    // Obtén los datos necesarios para enviar al servidor
-                    const recolectorId = recolectorId; // Suponiendo que tienes el ID del recolector
-                    const restauranteId = localStorage.getItem('restauranteId'); // Obtener el ID del restaurante desde localStorage
-    
-                    // Verifica que restauranteId no sea null o undefined
-                    if (!restauranteId) {
-                        alert('No se encontró el ID del restaurante. Por favor, inicie sesión nuevamente.');
-                        return;
-                    }
-    
-                    console.log('Enviando calificación:', selectedValue); // Debugging
-    
-                    fetch('/calificar-recolector', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ recolectorId, rating: selectedValue, restauranteId }) // Enviar restauranteId también
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Respuesta del servidor:', data); // Debugging
-                        if (data.success) {
-                            alert('Calificación enviada exitosamente');
-                        } else {
-                            alert('Hubo un problema al enviar la calificación. Inténtalo de nuevo.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error al enviar la calificación:', error);
-                        alert('Error al enviar la calificación. Por favor, inténtalo de nuevo.');
-                    });
-                }
-    
-                submitButton.addEventListener('click', submitRating);
-            } else {
-                console.error('No se encontró el botón de enviar calificación con la clase "submitRating".');
-            }
-        });
-    </script>    
+    <div id="rating-container"></div> <!-- Aquí cargamos dinámicamente las calificaciones -->
 
     <footer>
         <nav class="footer-nav">
@@ -135,5 +28,36 @@
             <a href="calificaciones.html"><img src="calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
+
+    <script>
+        document.getElementById('submit-calificacion').addEventListener('click', async () => {
+  const calificacion = document.getElementById('calificacion').value;
+  const comentario = document.getElementById('comentario').value;
+  const fechaCalificacion = new Date().toLocaleDateString(); // Generar la fecha en el frontend
+
+  try {
+    const response = await fetch(`/calificar/${recoleccionId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ calificacion, comentario })
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      // Mostrar la fecha generada localmente en la interfaz
+      document.getElementById('fecha-calificacion').textContent = `Calificado el: ${fechaCalificacion}`;
+    } else {
+      console.error('Error al calificar:', data.message);
+    }
+  } catch (error) {
+    console.error('Error en la solicitud:', error);
+  }
+});
+
+    </script>
+    
 </body>
 </html>
