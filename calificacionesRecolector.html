@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="calificaciones.css">
+    <link rel="stylesheet" href="calificacionesRecolector.css">
     <title>Mis calificaciones</title>
 </head>
 <body>
@@ -18,62 +18,62 @@
         </nav>
     </header>
 
-    <div class="rating-card">
-        <h3>Mis calificaciones</h3>
-        <div class="user-info">
-            <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
-            <span class="user-name" id="userName">Nombre del recolector</span>
-        </div>
-        <div class="rating-summary">
-            <h2 id="averageRating">4.2</h2>
-            <div class="stars" id="starsContainer">
-                &#9733;&#9733;&#9733;&#9733;&#9734; <!-- Estrellas dinámicas -->
+    <main>
+        <div class="rating-card">
+            <h3>Mis calificaciones</h3>
+            <div class="user-info">
+                <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
+                <span class="user-name" id="userName">Nombre del recolector</span>
             </div>
-            <p id="totalRatings">357 calificaciones</p>
-        </div>
-    
-        <div class="rating-breakdown">
-            <div class="rating-bar">
-                <span>5 </span>
-                <div class="bar">
-                    <div class="filled-bar" id="fiveStarBar"></div>
+            <div class="rating-summary">
+                <h2 id="averageRating">4.2</h2>
+                <div class="stars" id="starsContainer">
+                    &#9733;&#9733;&#9733;&#9733;&#9734; <!-- Estrellas dinámicas -->
                 </div>
-                <span class="rating-count" id="fiveStarCount">250</span>
+                <p id="totalRatings">357 calificaciones</p>
             </div>
-            <div class="rating-bar">
-                <span>4 </span>
-                <div class="bar">
-                    <div class="filled-bar" id="fourStarBar"></div>
+        
+            <div class="rating-breakdown">
+                <div class="rating-bar">
+                    <span>5 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="fiveStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="fiveStarCount">250</span>
                 </div>
-                <span class="rating-count" id="fourStarCount">53</span>
-            </div>
-            <div class="rating-bar">
-                <span>3 </span>
-                <div class="bar">
-                    <div class="filled-bar" id="threeStarBar"></div>
+                <div class="rating-bar">
+                    <span>4 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="fourStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="fourStarCount">53</span>
                 </div>
-                <span class="rating-count" id="threeStarCount">35</span>
-            </div>
-            <div class="rating-bar">
-                <span>2 </span>
-                <div class="bar">
-                    <div class="filled-bar" id="twoStarBar"></div>
+                <div class="rating-bar">
+                    <span>3 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="threeStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="threeStarCount">35</span>
                 </div>
-                <span class="rating-count" id="twoStarCount">10</span>
-            </div>
-            <div class="rating-bar">
-                <span>1 </span>
-                <div class="bar">
-                    <div class="filled-bar" id="oneStarBar"></div>
+                <div class="rating-bar">
+                    <span>2 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="twoStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="twoStarCount">10</span>
                 </div>
-                <span class="rating-count" id="oneStarCount">9</span>
+                <div class="rating-bar">
+                    <span>1 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="oneStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="oneStarCount">9</span>
+                </div>
             </div>
-        </div>
+        </div> 
         <h3 class="titulo-calificaciones">Calificación de restaurante anónimo</h3>
-        <!-- Contenedor donde aparecerán las calificaciones -->
-        <div id="rating-container"></div>
-    </div> 
-
+        <div id="rating-container"></div> <!-- Contenedor donde aparecerán las calificaciones -->
+    </main>
 
     <footer>
         <nav class="footer-nav">
@@ -89,6 +89,7 @@
 
             const authToken = localStorage.getItem('token');
             const recolectorId = localStorage.getItem('recolector_id'); // Asegúrate de que el ID del recolector esté en localStorage
+            let recolectorNombre = localStorage.getItem('recolector_nombre'); // Obtiene el nombre del recolector desde localStorage
             const fechaCalificacion = localStorage.getItem('fecha_calificacion'); // Obtener la fecha de calificación desde localStorage
 
             if (!recolectorId) {
@@ -96,6 +97,32 @@
                 window.location.href = 'login.html';
                 return;
             }
+
+            // Si el nombre del recolector no está en localStorage, realiza una solicitud para obtenerlo
+            if (!recolectorNombre) {
+                try {
+                    const response = await fetch(`/recolector/${recolectorId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`, // Envía el token en el encabezado
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Error al obtener el nombre del recolector.');
+                    }
+
+                    const data = await response.json();
+                    recolectorNombre = data.nombre; // Asume que la respuesta incluye el nombre del recolector
+                    localStorage.setItem('recolector_nombre', recolectorNombre); // Guarda el nombre en localStorage
+                } catch (error) {
+                    console.error('Error al obtener el nombre del recolector:', error);
+                }
+            }
+
+            // Mostrar el nombre del recolector
+            document.getElementById('userName').textContent = recolectorNombre || "Nombre del recolector";
 
             try {
                 // Realiza la solicitud al servidor para obtener las calificaciones del recolector
@@ -115,9 +142,6 @@
                 const data = await response.json();
                 if (response.ok && data.calificaciones) {
                     const calificaciones = data.calificaciones;
-
-                    // Mostrar el nombre del recolector
-                    document.getElementById('userName').textContent = data.recolectorNombre || "Nombre del recolector";
 
                     // Calcular el promedio de calificaciones
                     const totalRatings = calificaciones.length;
@@ -151,7 +175,6 @@
                     // Mostrar las estrellas dinámicamente según el promedio
                     const starsContainer = document.getElementById('starsContainer');
                     starsContainer.innerHTML = '&#9733;'.repeat(Math.round(averageRating)) + '&#9734;'.repeat(5 - Math.round(averageRating));
-
                     // Mostrar los comentarios y las fechas
                     const ratingContainer = document.getElementById("rating-container");
                     if (calificaciones.length > 0) {
@@ -185,3 +208,4 @@
     </script>
 </body>
 </html>
+

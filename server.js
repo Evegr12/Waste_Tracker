@@ -527,7 +527,12 @@ app.get('/solicitud-actual/:restaurantes_id', async (req, res) => {
     const solicitudPendiente = await Recoleccion.findOne({
       where: {
         restaurantes_id: restaurantes_id,
-        estado: 'pendiente'
+        [Op.or]: [
+          { estado: 'pendiente' },
+          { estado: 'en proceso' },
+          { estado: 'en camino' },
+          {estado: 'llegada'}
+        ]
       }
     });
 
@@ -877,11 +882,9 @@ app.post('/calificar/:recoleccionId', verificarToken, async (req, res) => {
 
     await recoleccion.save();
 
-   // Obtener la fecha actual para enviar en la respuesta
-  const fechaCalificacion = new Date().toLocaleDateString();
+    const fechaActualCalificacion = new Date().toLocaleDateString();
 
-
-    res.json({ success: true, message: 'Calificación, comentario y fecha guardados correctamente' });
+    res.json({ success: true, message: 'Calificación, comentario y fecha guardados correctamente', fechaCalificacion: fechaActualCalificacion });
   } catch (error) {
     console.error('Error al guardar la calificación:', error);
     res.status(500).json({ success: false, message: 'Error al guardar la calificación' });

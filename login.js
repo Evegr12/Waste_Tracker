@@ -78,6 +78,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Guardar recolector_id si el usuario es un recolector
                     if (data.tipo_usuario === 'recolector') {
                         localStorage.setItem('recolector_id', data.recolector_id); // Asegúrate de guardar recolector_id desde la respuesta
+                        localStorage.setItem('recolector_nombre', response.data.nombreRecolector); // Guarda el nombre del recolector
+
                     }
 
                     // Redirigir a la página correspondiente según el tipo de usuario

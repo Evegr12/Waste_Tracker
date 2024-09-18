@@ -1,7 +1,7 @@
 /* Estilos generales */
 body {
     font-family: Arial, sans-serif;
-    background-color: #9cc1ab; 
+    background-color: #b9e1c5; 
     margin: 0;
     padding-top: 80px; /* Espacio para el header */
     padding-bottom: 60px; /* Espacio para el footer */
@@ -10,23 +10,27 @@ body {
     align-items: center;
     flex-direction: column;
     min-height: 100vh;
+    color: #333;
+    font-size: 30px; /* Aumentar tamaño de fuente general */
 }
 
-/* Contenedor principal que no permite superposición */
+/* Contenedor principal */
 main {
     flex-grow: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
-    overflow-y: auto; /* Permite scroll si es necesario */
+    padding: 40px; /* Aumentar padding */
+    overflow-y: auto;
+    width: 100%;
+    max-width: 1400px; /* Aumentar el ancho máximo del contenido */
     box-sizing: border-box;
 }
 
 /* Encabezado */
 header {
     display: flex;
-    justify-content: space-between;
+    justify-content:space-between;
     align-items: center;
     width: 100%;
     padding: 15px 30px;
@@ -36,7 +40,6 @@ header {
     position: fixed;
     top: 0;
     z-index: 1000;
-    height: 60px; /* Definir altura fija */
 }
 
 .logo {
@@ -46,106 +49,79 @@ header {
 }
 
 .logo img {
-    width: 80px;
-    height: 60px;
+    width: 100px; /* Aumentar tamaño de imagen */
+    height: 80px;
     margin-right: 15px;
 }
 
 .logo h1 {
-    font-size: 26px;
+    font-size: 30px; /* Aumentar tamaño del texto */
     margin: 0;
     font-weight: bold;
     letter-spacing: 1px;
 }
 
-nav {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
 nav a {
-    color: #fff;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
+    font-size: 18px; /* Aumentar tamaño de texto del menú */
+    font-weight: bold;
 }
 
 nav img {
-    width: 30px;
-    height: 28px;
-    cursor: pointer;
-    margin-right: 20px;
-    transition: transform 0.3s ease;
-}
-
-nav img:hover {
-    transform: scale(1.3);
+    width: 40px; /* Aumentar tamaño de los íconos */
+    height: 35px;
 }
 
 /* Rating card */
 .rating-card {
     background-color: #f4f8f7;
     border-radius: 10px;
-    padding: 20px;
-    width: 100%; /* Se ajusta al ancho disponible */
-    max-width: 600px; /* Limitar el tamaño máximo */
+    padding: 40px; /* Aumentar padding */
+    width: 100%;
+    max-width: 1200px; /* Aumentar tamaño máximo */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
-    margin-bottom: 20px; /* Espacio para no superponerse con otros elementos */
+    margin-bottom: 30px;
 }
 
 /* Ajustes de la calificación y las barras */
-
-.rating-summary {
-    text-align: center;
-    margin-top: 10px;
-}
-
 .stars {
-    color: gold;
-    font-size: 24px;
+    font-size: 40px; /* Aumentar tamaño de las estrellas */
 }
-
-.rating-breakdown {
-    margin-top: 20px;
-}
-
-.rating-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.bar {
-    flex-grow: 1;
-    background-color: #e0e0e0;
-    margin: 0 10px;
-    height: 10px;
-    position: relative;
-}
-
-.filled-bar {
-    height: 10px;
-    background-color: #ffd700;
-}
-
-.rating-count {
-    width: 50px;
-    text-align: right;
-}
-
 
 .rating-box {
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: 50%;
-    max-width: 600px;
-    margin: 0 auto;
+    padding: 50px; /* Aumentar padding */
+    max-width: 700px; /* Aumentar ancho máximo */
 }
+
+.comment-box {
+    width: 100%;
+    max-width: 600px;
+    margin: 15px 0;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    resize: none; /* Para evitar redimensionar el cuadro */
+}
+
+button {
+    font-size: 30px;
+    background-color: #9cc1ab;
+    border: none;
+    border-radius: 10px;
+    margin: 20px;
+    padding: 10px;
+    margin-top: 30px;
+}
+
+button:hover {
+    background-color: #6eb38a;
+}
+
+button:active {
+    background-color: #3c6d50;
+}
+
 /* Footer */
 footer {
     position: fixed;
@@ -154,7 +130,6 @@ footer {
     background-color: #ffffff;
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    height: 50px; /* Definir altura fija */
 }
 
 .footer-nav {
@@ -182,31 +157,22 @@ footer {
     transform: scale(1.3);
 }
 
-/* Ajustes adicionales */
-.comments-section {
-    margin-top: 20px; /* Espacio entre calificaciones y comentarios */
-    padding: 15px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.rating-box .comment {
-    padding: 10px 0;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.comment p {
-    word-wrap: break-word;
-}
-
-.calificacion-card, .titulo-calificaciones {
-    text-align: justify;
-}
-
-
+/* Media Queries para Responsividad */
 @media (max-width: 768px) {
-    .rating-box {
-        width: 90%;
+    .rating-box, .comments-section {
+        width: 95%;
+    }
+
+    header, footer {
+        padding: 15px;
+    }
+
+    .logo img {
+        width: 80px;
+        height: 60px;
+    }
+
+    .logo h1 {
+        font-size: 26px;
     }
 }

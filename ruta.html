@@ -65,6 +65,23 @@
         // Capa para los marcadores
         const layerGroup = L.layerGroup().addTo(map);
     
+        // Función para convertir la hora al formato ISO 8601
+        function convertToISOTime(timeString) {
+            const [time, modifier] = timeString.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
+            if (modifier === 'pm' && hours < 12) hours += 12;
+            if (modifier === 'am' && hours === 12) hours = 0;
+            const date = new Date();
+            date.setHours(hours, minutes, 0, 0);
+            return date.toISOString();
+        }
+    
+        // Función para validar la hora en formato hh:mm am/pm
+        function validateTimeFormat(timeString) {
+            const regex = /^([01]?[0-9]|2[0-3]):([0-5][0-9]) (am|pm)$/i;
+            return regex.test(timeString);
+        }
+    
         // Mostrar las solicitudes aceptadas en el mapa
         fetch('/solicitudes-aceptadas', {
             headers: {
@@ -90,9 +107,12 @@
                         }
     
                         if (request.estado === 'en camino') {
-                            const eta = prompt('Por favor ingrese la hora estimada de llegada:');
-                            if (eta) {
-                                localStorage.setItem(`eta-${request.id}`, eta);  // Guardar la ETA localmente
+                            let eta = prompt('Por favor ingrese la hora estimada de llegada (formato hh:mm am/pm):');
+                            if (eta && validateTimeFormat(eta)) {
+                                const isoEta = convertToISOTime(eta);
+                                localStorage.setItem(`eta-${request.id}`, isoEta);  // Guardar la ETA en formato ISO
+                            } else {
+                                alert('Formato de hora inválido. Por favor use el formato hh:mm am/pm.');
                             }
                         }
     
@@ -102,7 +122,7 @@
                                 <b class="data-restaurante">Restaurante:</b> ${request.restaurante.nombre}<br>
                                 <b class="data-restaurante">Dirección:</b> ${request.restaurante.direccion}
                             </p>
-                            ${request.estado === 'en camino' ? `<b>ETA:</b> ${storedEta || 'No disponible'}<br>` : ''}
+                            ${request.estado === 'en camino' ? `<b>ETA:</b> ${storedEta ? new Date(storedEta).toLocaleString() : 'No disponible'}<br>` : ''}
                             <div class="popup-buttons">
                                 ${request.estado === 'en proceso' ? `<b class="solicitud-pendiente">Solicitud de recolección pendiente</b><br>
                                     <button class="cancelar-button" onclick="updateStatus('${request.id}', 'pendiente')">Cancelar</button>
@@ -136,9 +156,12 @@
             let fechaFinalizacion = null;
     
             if (status === 'en camino') {
-                eta = prompt('Por favor ingrese la hora estimada de llegada (ETA):');
-                if (eta) {
+                let etaInput = prompt('Por favor ingrese la hora estimada de llegada (formato hh:mm am/pm):');
+                if (etaInput && validateTimeFormat(etaInput)) {
+                    eta = convertToISOTime(etaInput); // Convertir ETA al formato ISO
                     localStorage.setItem(`eta-${requestId}`, eta); // Guardar ETA localmente
+                } else {
+                    alert('Formato de hora inválido. Por favor use el formato hh:mm am/pm.');
                 }
             }
     
@@ -162,7 +185,7 @@
                     // Manejo de notificaciones
                     await handleNotifications(status, requestId, authToken);
     
-                    location.reload(2000); // Recarga la página para actualizar el mapa (2seg)
+                    location.reload(2000); // Recarga la página para actualizar el mapa (2 seg)
                 } else {
                     alert('Error al actualizar el estado.');
                 }
@@ -195,7 +218,7 @@
                 // Si es 'en camino' y el idRestaurante es 13, añade la ETA al mensaje
                 let mensajeRestauranteConEta = mensajeRestaurante.texto;
                 if (status === 'en camino' && idRestaurante === 13) {
-                    mensajeRestauranteConEta += `. Hora de llegada estimada: ${storedEta || 'No disponible'}`;
+                    mensajeRestauranteConEta += `. Hora de llegada estimada: ${storedEta ? new Date(storedEta).toLocaleString() : 'No disponible'}`;
                 }
     
                 guardarNotificacionRestaurante(mensajeRestauranteConEta, 'restaurante');
@@ -204,29 +227,34 @@
     
         // Función para obtener notificaciones
         async function fetchNotification(id, authToken) {
-            const response = await fetch(`/mensaje-recoleccion/${id}`, {
-                method: 'GET',
+            const response = await fetch(`/notificaciones/${id}`, {
                 headers: {
-                    'Authorization': `Bearer ${authToken}`
+                    'Authorization': `Bearer ${authToken}`,
                 }
             });
+    
+            if (!response.ok) {
+                throw new Error('Error al obtener notificación');
+            }
+    
             return response.json();
         }
     
-        // Función para guardar la notificación en el recolector
+        // Función para guardar notificaciones en el localStorage para el recolector
         function guardarNotificacion(mensaje, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
-            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
-            localStorage.setItem('notificacionesRecolector', JSON.stringify(notificaciones));
+            let notificaciones = JSON.parse(localStorage.getItem(`${tipo}Notificaciones`)) || [];
+            notificaciones.push({ mensaje });
+            localStorage.setItem(`${tipo}Notificaciones`, JSON.stringify(notificaciones));
         }
     
-        // Función para guardar la notificación en el restaurante
+        // Función para guardar notificaciones en el localStorage para el restaurante
         function guardarNotificacionRestaurante(mensaje, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
-            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
-            localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
+            let notificaciones = JSON.parse(localStorage.getItem(`${tipo}Notificaciones`)) || [];
+            notificaciones.push({ mensaje });
+            localStorage.setItem(`${tipo}Notificaciones`, JSON.stringify(notificaciones));
         }
     </script>
+    
     
 
     <footer>

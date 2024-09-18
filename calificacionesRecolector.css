@@ -1,0 +1,173 @@
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f1f5f4;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-size: 22px;
+}
+
+/* Encabezado */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    width: 50px;
+    margin-right: 10px;
+}
+
+.logo h1 {
+    font-size: 24px;
+    color: #5b846c;
+}
+
+nav {
+    display: flex;
+    gap: 20px;
+}
+
+nav img {
+    width: 25px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+nav img:hover {
+    transform: scale(1.2);
+}
+
+/* Contenido Principal */
+main {
+    margin-top: 80px;
+    padding: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 80px auto 60px auto; /* Evita que el contenido se superponga con el footer */
+}
+
+.rating-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 600px;
+    margin: 20px auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.user-icon {
+    font-size: 40px;
+}
+
+.user-name {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+/* Estrellas y resumen */
+.rating-summary {
+    margin-bottom: 20px;
+}
+
+.stars {
+    color: gold;
+    font-size: 24px;
+}
+
+.rating-breakdown {
+    margin-top: 20px;
+}
+
+.rating-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.bar {
+    flex-grow: 1;
+    background-color: #e0e0e0;
+    margin: 0 10px;
+    height: 10px;
+    border-radius: 5px;
+    position: relative;
+}
+
+.filled-bar {
+    height: 10px;
+    background-color: #ffd700;
+    border-radius: 5px;
+}
+
+.rating-count {
+    width: 50px;
+    text-align: right;
+}
+
+/* Contenedor de calificaciones individuales */
+.calificacion-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 0 auto 20px;
+    text-align: left;
+}
+
+.titulo-calificaciones {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Footer */
+footer {
+    background-color: #ffffff;
+    padding: 10px 0;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+.footer-nav {
+    display: flex;
+    justify-content: space-around;
+}
+
+footer img {
+    width: 30px;
+    transition: transform 0.3s;
+}
+
+footer img:hover {
+    transform: scale(1.2);
+}
