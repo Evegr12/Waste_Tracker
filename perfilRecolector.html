@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="stylesperfilRes.css">
-    <title>Document</title>
+    <title>Perfil Recolector</title>
 </head>
 <body>
     <header>
@@ -20,23 +20,23 @@
 
     <div class="container">
         <div class="header">
-            <h2>Mi restaurante</h2>
+            <h2>Mi perfil</h2>
         </div>
         <div class="restaurant-info">
             <label for="profileImageUpload">
-                <img src="kingfish.png" alt="King Fish" id="foto-perfil">
+                <img src="kingfish.png" alt="foto-perfil" id="foto-perfil">
             </label>
             <input type="file" id="cargar-foto-perfil" style="display: none;" accept="image/*">
             <a href="#"><img src="camara.png" alt="actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil').click();"></a>
-            <div class="restaurant-name">Recolector</div>
+            <div class="recolector-name">Recolector</div>
         </div>
+
+        <!--N° recolecciones finalizadas-->
         <div class="collection-info">
-            <span>5</span> Recolecciones
+            <span>0</span> Recolecciones
         </div>
-        <!--<div class="status">
-            <img src="smiley.png" alt="Excellent">
-            <p>Excellent</p>
-        </div>-->
+
+        <!--Botón cerrar sesión-->
         <button class="logout-button" id="logoutButton">Cerrar sesión</button>
         <!-- Formulario para cerrar sesión -->
         <form id="logoutForm" action="/logout" method="POST" style="display:none;">
@@ -48,12 +48,19 @@
             <a href="inicioRecolector.html"><img src="home-icon.png" alt="Inicio"></a>
             <a href="mapaRecolector.html"><img src="ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
             <a href="ruta.html"><img class="mapa" src="ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
-            <a href="calificacionesRecolector.html"><img class="calificaciones" src="califi-icon.png" alt="Calificar"></a>
+            <a href="calificacionesRecolector.html"><img class="calificaciones" src="califi-icon.png" alt="Calificaciones"></a>
         </nav>
     </footer>
 
-    <!-- JavaScript para manejo de imagen de perfil -->
+    <!-- JavaScript para la foto de perfil -->
     <script>
+         // Obtener el nombre del recolector y mostrarlo
+        const nombreRecolector = localStorage.getItem('recolector_nombre');
+        const userId = localStorage.getItem('usuarios_id');
+        if (nombreRecolector) {
+            document.querySelector('.recolector-name').textContent = nombreRecolector;
+        }
+
         const cargarFotoPerfil = document.getElementById('cargar-foto-perfil');
             cargarFotoPerfil.addEventListener('change', function() {
                 const file = this.files[0];
@@ -67,17 +74,16 @@
                         const reader = new FileReader();
                         reader.onload = function(event) {
                             const fotoPerfil = document.getElementById('foto-perfil');
-                            if (fotoPerfil) {
-                                fotoPerfil.setAttribute('src', event.target.result); // Muestra la vista previa
-                            }
+                            fotoPerfil.setAttribute('src', event.target.result); // Muestra la vista previa
                         };
                         reader.readAsDataURL(file);
 
-                        // Ahora envía la imagen al servidor
+                        //Enviar la imagen al servidor
                         const formData = new FormData();
                         formData.append('fotoPerfil', file); // Nombre del input en el formulario
-                        formData.append('userId', '1'); // Cambia '1' por el ID real del usuario
 
+
+                        formData.append('usuarios_id', userId);
                         fetch('/upload-photo', {
                             method: 'POST',
                             body: formData
@@ -86,8 +92,10 @@
                         .then(data => {
                             if (data.success) {
                                 alert('¡Foto de perfil subida con éxito!');
-                                // Aquí podrías actualizar la URL de la foto de perfil en la interfaz de usuario con la URL del servidor
+                                // Actualizar la URL de la foto de perfil en la tabla usuario con la URL del servidor
                                 document.getElementById('foto-perfil').src = data.imageUrl;
+                                // Guardar la URL de la foto de perfil en localStorage
+                                localStorage.setItem('foto_perfil', data.imageUrl);
                             } else {
                                 alert('Error al subir la foto de perfil.');
                             }
@@ -100,6 +108,28 @@
                     }
                 }
             });
+
+            // Mostrar la imagen guardada al cargar la página
+            window.addEventListener('load', () => {
+                const fotoPerfilGuardada = localStorage.getItem('foto_perfil');
+                if (fotoPerfilGuardada) {
+                    document.getElementById('foto-perfil').setAttribute('src', fotoPerfilGuardada);
+                }else {
+                    document.getElementById('foto-perfil').setAttribute('src', '/uploads'); // Imagen por defecto si no hay
+                }
+            });
+                // Obtener el número de recolecciones finalizadas
+                const recolectorId = localStorage.getItem('recolector_id');
+                if (recolectorId) {
+                    fetch(`recolecciones-finalizadas?recolectorId=${recolectorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.querySelector('.collection-info span').textContent = data.recoleccionesFinalizadas || 0;
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener las recolecciones:', error);
+                    });
+                }
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>

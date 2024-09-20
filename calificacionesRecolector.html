@@ -97,30 +97,6 @@
                 window.location.href = 'login.html';
                 return;
             }
-
-            // Si el nombre del recolector no está en localStorage, realiza una solicitud para obtenerlo
-            if (!recolectorNombre) {
-                try {
-                    const response = await fetch(`/recolector/${recolectorId}`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`, // Envía el token en el encabezado
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Error al obtener el nombre del recolector.');
-                    }
-
-                    const data = await response.json();
-                    recolectorNombre = data.nombre; // Asume que la respuesta incluye el nombre del recolector
-                    localStorage.setItem('recolector_nombre', recolectorNombre); // Guarda el nombre en localStorage
-                } catch (error) {
-                    console.error('Error al obtener el nombre del recolector:', error);
-                }
-            }
-
             // Mostrar el nombre del recolector
             document.getElementById('userName').textContent = recolectorNombre || "Nombre del recolector";
 

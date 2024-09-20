@@ -4,13 +4,13 @@ const session = require('express-session');
 const cors = require('cors');
 const { Op } = require('sequelize');
 const multer = require('multer');
-const upload = multer();
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs'); //'fs' sistema de archivos
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');  
+const { error } = require('console');
 const app = express();
 
 // Verifica si la carpeta 'uploads' existe, si no, la crea
@@ -29,6 +29,7 @@ const storage = multer.diskStorage({
   }
 });
 
+const upload = multer({ storage: storage });
 // Configuración de CORS
 const corsOptions = {
   origin: '*',
@@ -336,10 +337,14 @@ app.post('/login', async (req, res) => {
       const token = generarToken(user);
       res.json({ 
         token, 
+        id: user.id,
         tipo_usuario: user.tipo_usuario,
         restaurantes_id: restaurante ? restaurante.id : null,
         recolector_id: recolector ? recolector.id : null,  // Incluir recolector_id si es recolector
-        direccion: direccion // Incluye la dirección en la respuesta
+        nombreRecolector: recolector ? user.nombre : null,  //nombre del recolector
+        nombreRestaurante: restaurante ? restaurante.nombre : null,  //nombre del recolector
+        direccion: direccion, //dirección del restaurante
+        fotoPerfil: user.fotoPerfil
       });
     } else {
       res.status(401).json({ error: 'Correo electrónico o contraseña incorrectos' });
@@ -441,7 +446,7 @@ app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
     }
 
     const imageUrl = `/uploads/${req.file.filename}`;
-    const userId = req.body.userId;
+    const userId = req.body.usuarios_id;
     console.log('UserId recibido:', userId); // Verifica el valor aquí
 
     // Asegúrate de que userId sea una cadena y no un array
@@ -822,6 +827,29 @@ app.get('/recolecciones/ultima-finalizada/:restauranteId', verificarToken, async
   }
 });
 
+//Recolecciones finalizadas del recolector
+app.get('/recolecciones-finalizadas', async(req, res) =>{
+  const { recolectorId } = req.query;
+
+  if(!recolectorId){
+    return res.status(400).json({error: 'ID del recolector es requerido'});
+  }
+
+  try{
+    //contar recolecciones con estado finalizada
+    const recoleccionesFinalizadas = await Recoleccion.count({
+      where: {
+          recolectores_id: recolectorId, //ID del recolector
+          estado: 'finalizada'
+      }
+    });
+
+    res.json({ recoleccionesFinalizadas });
+  }catch(error){
+    console.error('Error al obtener las recolecciones finalizadas:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
 // Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
 app.get('/notificaciones-recolector', verificarToken, verificarRecolector, async (req, res) => {
   try {
@@ -986,7 +1014,6 @@ app.post('/logout', (req, res) => {
     res.redirect('/'); // Redirige al usuario a la página de login u otra página
   });
 });
-
 
 app.listen(process.env.PORT_SERVER, function () {
   console.log("Servidor en el puerto " + process.env.PORT_SERVER);

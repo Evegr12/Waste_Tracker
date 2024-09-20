@@ -224,8 +224,19 @@
                 guardarNotificacionRestaurante(mensajeRestauranteConEta, 'restaurante');
             }
         }
+
+         // Función para obtener notificaciones
+        async function fetchNotification(id, authToken) {
+            const response = await fetch(`/mensaje-recoleccion/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            return response.json();
+        }
     
-        // Función para obtener notificaciones
+        /*// Función para obtener notificaciones
         async function fetchNotification(id, authToken) {
             const response = await fetch(`/notificaciones/${id}`, {
                 headers: {
@@ -238,20 +249,20 @@
             }
     
             return response.json();
-        }
+        }*/
     
-        // Función para guardar notificaciones en el localStorage para el recolector
+         // Función para guardar la notificación en el recolector
         function guardarNotificacion(mensaje, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem(`${tipo}Notificaciones`)) || [];
-            notificaciones.push({ mensaje });
-            localStorage.setItem(`${tipo}Notificaciones`, JSON.stringify(notificaciones));
+            let notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
+            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
+            localStorage.setItem('notificacionesRecolector', JSON.stringify(notificaciones));
         }
     
-        // Función para guardar notificaciones en el localStorage para el restaurante
+        // Función para guardar la notificación en el restaurante
         function guardarNotificacionRestaurante(mensaje, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem(`${tipo}Notificaciones`)) || [];
-            notificaciones.push({ mensaje });
-            localStorage.setItem(`${tipo}Notificaciones`, JSON.stringify(notificaciones));
+            let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
+            localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
         }
     </script>
     
