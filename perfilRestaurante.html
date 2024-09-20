@@ -31,15 +31,12 @@
             </label>
             <input type="file" id="cargar-foto-perfil" style="display: none;" accept="image/*">
             <a href="#"><img src="camara.png" alt="Actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil').click();"></a>
-            <div class="restaurant-name">King Fish</div>
+            <div class="restaurant-name">Restaurante</div>
         </div>
         <div class="collection-info">
-            <span>33</span> Recolecciones
+            <span>0</span> Recolecciones
         </div>
-        <div class="status">
-            <img src="smiley.png" alt="Excelente">
-            <p>Excelente</p>
-        </div>
+        
         <button class="logout-button" id="logoutButton">Cerrar sesión</button>
         <!-- Formulario para cerrar sesión -->
         <form id="logoutForm" action="/logout" method="POST" style="display:none;">
@@ -55,6 +52,13 @@
     </footer>
     <!-- JavaScript para manejo de imagen de perfil -->
     <script>
+        // Obtener el nombre del restaurante y mostrarlo
+        const nombreRestaurante = localStorage.getItem('restaurante_nombre');
+        const restaurantes_id = localStorage.getItem('restaurantes_id');
+        if (nombreRestaurante) {
+            document.querySelector('.restaurant-name').textContent = nombreRestaurante;
+        }
+
         const cargarFotoPerfil = document.getElementById('cargar-foto-perfil');
             cargarFotoPerfil.addEventListener('change', function() {
                 const file = this.files[0];
@@ -101,6 +105,28 @@
                     }
                 }
             });
+
+            // Mostrar la imagen guardada al cargar la página
+            window.addEventListener('load', () => {
+                const fotoPerfilGuardada = localStorage.getItem('foto_perfil');
+                if (fotoPerfilGuardada) {
+                    document.getElementById('foto-perfil').setAttribute('src', fotoPerfilGuardada);
+                }else {
+                    document.getElementById('foto-perfil').setAttribute('src', '/uploads'); // Imagen por defecto si no hay
+                }
+            });
+                // Obtener el número de recolecciones finalizadas
+                const restauranteId = localStorage.getItem('restaurantes_id');
+                if (restauranteId) {
+                    fetch(`recolecciones-finalizadas-restaurante?restauranteId=${restauranteId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.querySelector('.collection-info span').textContent = data.recoleccionesFinalizadas || 0;
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener las recolecciones:', error);
+                    });
+                }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
     <script src="login.js"></script>

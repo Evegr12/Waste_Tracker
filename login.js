@@ -81,7 +81,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         localStorage.setItem('recolector_id', data.recolector_id); // Asegúrate de guardar recolector_id desde la respuesta
                         localStorage.setItem('recolector_nombre', data.nombreRecolector); // Guarda el nombre del recolector
 
+                    }else if(data.tipo_usuario === 'restaurante') {
+                        localStorage.setItem('restaurante_nombre', data.nombreRestaurante); 
                     }
+
                     // Redirigir a la página correspondiente según el tipo de usuario
                     const redirectPage = data.tipo_usuario === 'restaurante' ? 'inicioRestaurante.html' : 'inicioRecolector.html';
                     window.location.href = redirectPage;

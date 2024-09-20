@@ -850,6 +850,30 @@ app.get('/recolecciones-finalizadas', async(req, res) =>{
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
+
+//Recolecciones finalizadas del restaurante
+app.get('/recolecciones-finalizadas-restaurante', async(req, res) =>{
+  const { restauranteId } = req.query;
+
+  if(!restauranteId){
+    return res.status(400).json({error: 'ID del recolector es requerido'});
+  }
+
+  try{
+    //contar recolecciones con estado finalizada
+    const recoleccionesFinalizadas = await Recoleccion.count({
+      where: {
+          restaurantes_id: restauranteId, //ID del recolector
+          estado: 'finalizada'
+      }
+    });
+
+    res.json({ recoleccionesFinalizadas });
+  }catch(error){
+    console.error('Error al obtener las recolecciones finalizadas:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
 // Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
 app.get('/notificaciones-recolector', verificarToken, verificarRecolector, async (req, res) => {
   try {
