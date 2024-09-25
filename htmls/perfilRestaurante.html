@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/stylesperfilRes.css">
+    <title>Perfil del Restaurante</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
+            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="header">
+            <h2>Mi restaurante</h2>
+        </div>
+        <div class="restaurant-info">
+            <!-- Imagen de perfil y campo de subida de archivo -->
+            <label for="cargar-foto-perfil">
+                <img src="../images/kingfish.png" alt="King Fish" id="foto-perfil">
+            </label>
+            <input type="file" id="cargar-foto-perfil-res" style="display: none;" accept="image/*">
+            <a href="#"><img src="../images/camara.png" alt="Actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil-res').click();"></a><br><br>
+            <!-- Contenedor para el mensaje temporal -->
+            <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
+            <div class="restaurant-name">Restaurante</div>
+        </div>
+        <div class="collection-info">
+            <span>0</span> Recolecciones
+        </div>
+        
+        <button class="logout-button" id="logoutButton">Cerrar sesión</button>
+        <!-- Formulario para cerrar sesión -->
+        <form id="logoutForm" action="/logout" method="POST" style="display:none;">
+        </form>
+    </div>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/solicitudRecoleccion.html"><img src="../images/bote-icon.png" alt="Bote"></a>
+            <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+    <!-- JavaScript para manejo de imagen de perfil -->
+    <script>
+        // Obtener el nombre del restaurante y mostrarlo
+        const nombreRestaurante = localStorage.getItem('restaurante_nombre');
+        const restaurantes_id = localStorage.getItem('restaurantes_id');
+        const userId = localStorage.getItem('usuarios_id');
+
+        // Función para mostrar el mensaje temporal
+        function mostrarMensajeTemporal(mensaje, duracion) {
+            const mensajeTemporal = document.getElementById('mensajeTemporal');
+            mensajeTemporal.textContent = mensaje;
+            mensajeTemporal.style.display = 'block';
+
+            // Ocultar el mensaje después de la duración especificada
+            setTimeout(() => {
+                mensajeTemporal.style.display = 'none';
+            }, duracion);
+        }
+
+        if (nombreRestaurante) {
+            document.querySelector('.restaurant-name').textContent = nombreRestaurante;
+        }
+
+        const cargarFotoPerfil = document.getElementById('cargar-foto-perfil-res');
+            cargarFotoPerfil.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    // Verifica que el archivo sea una imagen
+                    if (file.type.startsWith('image/')) {
+                        if (file.size > 2 * 1024 * 1024) { // Limite de 2MB
+                            alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const fotoPerfil = document.getElementById('foto-perfil');
+                            if (fotoPerfil) {
+                                fotoPerfil.setAttribute('src', event.target.result); // Muestra la vista previa
+                            }
+                        };
+                        reader.readAsDataURL(file);
+
+                        // Ahora envía la imagen al servidor
+                        const formData = new FormData();
+                        formData.append('fotoPerfil', file); // Nombre del input en el formulario
+                        formData.append('usuarios_id', userId);
+
+                        fetch('/upload-photo', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Mostrar el mensaje temporal
+                                mostrarMensajeTemporal('Foto de perfil actualizada', 3000); // Mostrar durante 3 segundos
+                                // Aquí podrías actualizar la URL de la foto de perfil en la interfaz de usuario con la URL del servidor
+                                document.getElementById('foto-perfil').src = data.imageUrl;
+                                // Guardar la URL de la foto de perfil en localStorage
+                                localStorage.setItem('foto_perfil_res', data.imageUrl);
+                            } else {
+                                alert('Error al subir la foto de perfil.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error al enviar la imagen:', error);
+                        });
+                    } else {
+                        alert('El archivo seleccionado no es una imagen válida.');
+                    }
+                }
+            });
+
+            // Mostrar la imagen guardada al cargar la página
+            window.addEventListener('load', () => {
+                const fotoPerfilGuardada = localStorage.getItem('foto_perfil_res');
+                if (fotoPerfilGuardada) {
+                    document.getElementById('foto-perfil').setAttribute('src', fotoPerfilGuardada);
+                }else {
+                    document.getElementById('foto-perfil').setAttribute('src', '../uploads'); // Imagen por defecto si no hay
+                }
+            });
+                // Obtener el número de recolecciones finalizadas
+                const restauranteId = localStorage.getItem('restaurantes_id');
+                if (restauranteId) {
+                    fetch(`/recolecciones-finalizadas-restaurante?restauranteId=${restauranteId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.querySelector('.collection-info span').textContent = data.recoleccionesFinalizadas || 0;
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener las recolecciones:', error);
+                    });
+                }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
+    <script src="../js/login.js"></script>
+</body>
+</html>

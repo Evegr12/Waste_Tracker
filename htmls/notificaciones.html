@@ -1,0 +1,100 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/notificaciones.css">
+    <title>Waste Tracker - Notificaciones</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRestaurante.html">
+                <img src="../images/logoWT.png" alt="Waste Tracker">
+            </a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
+            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="notifications">
+            <h2>Notificaciones</h2>
+            <div class="notifications-list">
+                <!-- Aquí se agregarán las notificaciones dinámicamente -->
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/solicitudRecoleccion.html"><img src="../images/bote-icon.png" alt="Bote"></a>
+            <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Función para obtener y mostrar el consejo si han pasado 4 horas
+            function obtenerConsejo() {
+                fetch('/notificacion-consejo')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            mostrarNotificacion(data.texto, Date.now());
+                            // Guardar el consejo en el localStorage y la fecha actual
+                            localStorage.setItem('ultimaVezConsejo', Date.now());
+                        }
+                    })
+                    .catch(error => console.error('Error al obtener el consejo:', error));
+            }
+
+            // Función para mostrar notificaciones en la lista
+            function mostrarNotificacion(mensaje, fechaHora) {
+                const notificationList = document.querySelector('.notifications-list');
+                // Crear el elemento de la notificación
+                const notificationItem = document.createElement('div');
+                notificationItem.classList.add('notification');
+                notificationItem.innerHTML = `
+                    <p class="message">${mensaje}</p>
+                    <div class="datetime">
+                        <span class="date-time">${new Date(fechaHora).toLocaleString() || ' '} </span>
+                    </div>
+                `;
+                // Insertar la notificación al principio
+                notificationList.prepend(notificationItem);
+
+                // Limitar a las últimas 12 notificaciones
+                if (notificationList.children.length > 12) {
+                    notificationList.removeChild(notificationList.lastChild);
+                }
+            }
+
+            // Verificar si han pasado 4 horas desde la última vez que se mostró un consejo
+            function comprobarUltimaVez() {
+                const ultimaVezConsejo = localStorage.getItem('ultimaVezConsejo');
+                const ahora = Date.now();
+                const cuatroHoras = 4 * 60 * 60 * 1000; // 4 horas en milisegundos
+
+                if (!ultimaVezConsejo || (ahora - ultimaVezConsejo) >= cuatroHoras) {
+                    obtenerConsejo(); // Obtener y mostrar un nuevo consejo
+                }
+            }
+
+            // Cargar notificaciones existentes del localStorage
+            const notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+            notificaciones.forEach(notificacion => {
+                mostrarNotificacion(notificacion.mensaje, notificacion.fechaHora);
+            });
+
+            // Verificar y mostrar un consejo si corresponde
+            comprobarUltimaVez();
+        });
+    </script>
+</body>
+</html>

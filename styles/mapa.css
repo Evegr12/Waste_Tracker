@@ -1,0 +1,325 @@
+/* Estilos base para todos los dispositivos */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    box-sizing: border-box;
+    padding-top: 80px;
+    height: 100vh;
+}
+.container {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 900px; /* Ajuste para evitar que se expanda demasiado */
+    text-align: center;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 15px 30px;
+    background-color: hsl(0, 0%, 100%);
+    color: #5b846c;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    flex-wrap: wrap;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    width: 90px;
+    height: 70px;
+    margin-right: 25px;
+    margin-left: 20px;
+}
+
+.logo h1 {
+    font-size: 28px;
+    margin: 0;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+nav a {
+    color: #333;
+    text-decoration: none;
+}
+
+nav img {
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    margin-right: 45px;
+    transition: transform 0.3s ease;
+}
+
+nav img:hover {
+    transform: scale(1.2);
+}
+
+.sol-aceptada {
+    font-size: 22px;
+} 
+
+/*Datos del recuadro de ubicación (popupContent)*/
+.data-restaurante {
+    font-size: 18px;
+    font-family: 'Poppins', sans-serif;
+    text-align: justify;
+}
+
+/*Mensajes del estado de la(s) solicitud(es) aceptada(s) (popupContent)*/
+.solicitud-pendiente {
+    font-size: 20px;
+    font-weight: bold;
+    color: #a009a0;
+}
+
+.solicitud-en-camino {
+    font-size: 20px;
+    font-weight: bold;
+    color: #4c82a6;
+}
+
+.el-recolector-llego {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2f09a0;
+}
+
+.solicitud-finalizada {
+    font-size: 20px;
+    font-weight: bold;
+    color: #0dc258;
+}
+
+/*Botón cambio de estado de la recolección*/
+.aceptar-recoleccion {
+    background-color: #b57bc9;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.aceptar-recoleccion:hover {
+    background-color: #9652a9;
+}
+
+.aceptar-recoleccion:active {
+    background-color: #57266f; /* color más oscuro al hacer clic */
+    transform: scale(0.98); /*efecto de clic */
+}
+
+.cancelar-button {
+    background-color: #f56767;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+.cancelar-button:hover {
+    background-color: #d53838;
+}
+
+.cancelar-button:active {
+    background-color: #8d1c1c; /* color más oscuro al hacer clic */
+    transform: scale(0.98); /*efecto de clic */
+}
+
+.en-camino-button {
+    background-color: #6ba1c5;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+.en-camino-button:hover {
+    background-color: #4c82a6;
+}
+
+.en-camino-button:active {
+    background-color: #357199; /* color más oscuro al hacer clic */
+    transform: scale(0.98); /*efecto de clic */
+}
+
+.llegue-button {
+    background-color: #6e6cdb;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+.llegue-button:hover {
+    background-color: #3e3cc7;
+}
+
+.llegue-button:active {
+    background-color: #1d1480; /* color más oscuro al hacer clic */
+    transform: scale(0.98); /*efecto de clic */
+}
+
+.finalize-button {
+    background-color: #6cbb6f;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.finalize-button:hover {
+    background-color:#397d3f ;
+}
+
+.finalize-button:active {
+    background-color: #114f16; /* color más oscuro al hacer clic */
+    transform: scale(0.98); /*efecto de clic */
+}
+
+
+
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.footer-nav {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+}
+
+.footer-nav a {
+    text-decoration: none;
+    color: #333;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
+.footer-nav img {
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+.calificaciones {
+    width: 55px !important;
+    height: 55px !important;
+}
+
+.footer-nav img:hover {
+    transform: scale(1.3);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    header {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .logo img {
+        width: 60px;
+        height: 45px;
+    }
+
+    .logo h1 {
+        font-size: 20px;
+    }
+
+    nav img {
+        width: 25px;
+        height: 25px;
+    }
+
+    #map {
+        height: 2000px;
+        width: 100%;
+    }
+
+    .aceptar-recoleccion, .cancelar-button, .en-camino-button, .llegue-button, .finalize-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+
+    .popup-buttons {
+        text-align: center;
+    }
+
+    .footer-nav a {
+        margin-bottom: 0px;
+    }
+
+    .aceptar-recoleccion, .cancelar-button, .en-camino-button, .llegue-button, .finalize-button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
+
+/* Estilos para pantallas medianas (tablets) */
+@media (max-width: 768px) {
+    .logo h1 {
+        font-size: 22px;
+    }
+
+    nav img {
+        width: 28px;
+        height: 28px;
+    }
+
+    #map {
+        height: 65vh;
+    }
+
+    .aceptar-recoleccion, .cancelar-button, .en-camino-button, .llegue-button, .finalize-button {
+        padding: 9px 18px;
+        font-size: 15px;
+    }
+}

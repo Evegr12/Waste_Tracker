@@ -1,0 +1,40 @@
+{
+    "name": "Waste Tracker",
+    "short_name": "WasteTracker",
+    "start_url": "/",
+    "display": "standalone",
+    "display_override": ["window-controls-overlay", "standalone", "fullscreen"],
+    "background_color": "#ffffff",
+    "theme_color": "#5b846c",
+    "icons": [
+        {
+            "src": "/images/logwt.png",
+            "type": "image/png",
+            "sizes": "192x192",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/WTlogo.png",
+            "type": "image/png",
+            "sizes": "512x512",
+            "purpose": "any"
+        }
+    ],
+
+    "screenshots": [
+        {
+            "src": "/images/screenshot1.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "label": "Pantalla de inicio",
+            "platform": "wide"
+        },
+        {
+            "src": "/images/screenshot2.png",
+            "sizes": "640x480",
+            "type": "image/png",
+            "label": "Inicio del restaurante"
+        }
+    ]
+}
+

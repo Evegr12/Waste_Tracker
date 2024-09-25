@@ -1,0 +1,254 @@
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #b9e1c5; 
+    margin: 0;
+    padding-top: 80px; /* Espacio para el header */
+    padding-bottom: 60px; /* Espacio para el footer */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    min-height: 100vh;
+    color: #333;
+    font-size: 22px; /* Aumentar tamaño de fuente general */
+}
+
+/* Encabezado */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 15px 30px;
+    background-color: hsl(0, 0%, 100%);
+    color: #5b846c;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    width: 90px;
+    height: 70px;
+    margin-right: 25px;
+    margin-left: 20px;
+}
+
+.logo h1 {
+    font-size: 28px;
+    margin: 0;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+nav a {
+    color: #333;
+    text-decoration: none;
+}
+
+nav img {
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    margin-right: 35px;
+    transition: transform 0.3s ease;
+}
+
+nav img:hover {
+    transform: scale(1.2);
+}
+
+/* Contenido Principal */
+main {
+    margin-top: 80px;
+    padding: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 80px auto 60px auto;
+}
+
+.rating-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 15px; /* Reducir padding en pantallas pequeñas */
+    max-width: 600px;
+    margin: 20px auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.user-icon {
+    font-size: 30px; /* Ajusta el tamaño del ícono de usuario */
+}
+
+.user-name {
+    font-size: 18px; /* Ajusta el tamaño del nombre del usuario */
+    font-weight: bold;
+}
+
+/* Estrellas y resumen */
+.rating-summary {
+    margin-bottom: 20px;
+}
+
+.stars {
+    color: gold;
+    font-size: 20px; /* Ajusta el tamaño de las estrellas */
+}
+
+.rating-breakdown {
+    margin-top: 20px;
+}
+
+.rating-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.bar {
+    flex-grow: 1;
+    background-color: #e0e0e0;
+    margin: 0 10px;
+    height: 8px; /* Reducir altura de las barras en pantallas pequeñas */
+    border-radius: 5px;
+}
+
+.filled-bar {
+    height: 8px; /* Mantén el tamaño de la barra llena */
+    background-color: #ffd700;
+    border-radius: 5px;
+}
+
+.rating-count {
+    width: 40px; /* Reducir el ancho del conteo de calificaciones */
+    text-align: right;
+}
+
+/* Contenedor de calificaciones individuales */
+.calificacion-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 10px; /* Reducir padding en tarjetas individuales */
+    margin: 10px 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 0 auto 20px;
+    text-align: left;
+}
+
+.titulo-calificaciones {
+    font-size: 18px; /* Ajusta el tamaño de la fuente del título */
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Footer */
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.footer-nav {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+}
+
+.footer-nav a {
+    text-decoration: none;
+    color: #333;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
+.footer-nav img {
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+.calificaciones {
+    width: 55px !important;
+    height: 55px !important;
+}
+
+.footer-nav img:hover {
+    transform: scale(1.3);
+}
+
+/* Media Queries para pantallas pequeñas */
+@media (max-width: 768px) {
+    body {
+        font-size: 16px; /* Reducir tamaño de fuente en pantallas medianas */
+    }
+
+    header {
+        padding: 10px; /* Reducir padding del encabezado */
+    }
+
+    nav img {
+        width: 20px; /* Reducir el tamaño de los iconos del menú */
+    }
+
+    .rating-card, .calificacion-card {
+        max-width: 100%; /* Permitir que las tarjetas usen el ancho completo */
+        padding: 10px; /* Reducir padding en las tarjetas */
+    }
+
+    .rating-summary h2 {
+        font-size: 32px; /* Ajusta el tamaño del promedio de calificaciones */
+    }
+
+    .rating-count {
+        font-size: 14px; /* Ajusta el tamaño de los números de conteo de calificaciones */
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 14px; /* Reducir aún más el tamaño de fuente en pantallas pequeñas */
+    }
+
+    .logo h1 {
+        font-size: 18px; /* Reducir el tamaño del logo en pantallas muy pequeñas */
+    }
+
+    .rating-summary h2 {
+        font-size: 28px; /* Ajustar el tamaño del promedio de calificación */
+    }
+
+    footer img {
+        width: 20px; /* Reducir el tamaño de los íconos en el pie de página */
+    }
+
+    .stars {
+        font-size: 18px; /* Reducir tamaño de las estrellas */
+    }
+}

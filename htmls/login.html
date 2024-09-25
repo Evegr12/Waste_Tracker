@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 Iniciar Sesión</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="manifest" href="../manifest.json">
+
+</head>
+
+<body>
+    <header class="header" id="header">
+        <div class="logo">
+            <a href="/htmls/login.html"><img src="../images/logoWT.png" alt="Waste Tracker Logo" class="logo-image"></a><b>Waste Tracker</b>
+        </div>
+        <nav class="nav-menu" id="header">
+            <ul>
+                <li><a href="/htmls/quienesSomos.html" class="menu-item">Quiénes somos</a></li>
+                <li><a href="/htmls/clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>
+            </ul>
+        </nav>
+        <div id="header" class="auth-buttons">
+            <button class="login-button" onclick="showLogin()">Iniciar sesión</button>
+            <button class="register-button" onclick="showRegister()">Regístrate</button>
+        </div>
+    </header>
+
+    <div id="contenido-principal" class="background">
+        <div class="animacion" id="animacion">
+            <h1 class="text-primary mb-4" id="typewriter">¡Por un planeta más limpio!</h1>
+        </div>
+    
+        <div class="contenido">
+            <div class="cta">
+                <h3 class="subtitulo">Separar tus residuos es lo de hoy!</h3>
+                <p>Waste Tracker facilita la recolección y gestión de residuos orgánicos, conectando restaurantes con recolectores para un entorno más sostenible. Únete a nosotros en la misión de reducir el impacto ambiental y promover un futuro más limpio para todos.</p>
+                <button class="register-button" onclick="showRegister()">Regístrate. ¡Es gratis!</button>
+            </div>
+            <div class="image-container">
+                <img src="../images/inicio-wasteT.png" alt="Ilustración de Waste Tracker">
+            </div>
+        </div>
+    </div>
+
+    <div class="login" id="loginForm" style="display: none;">
+        <!--Formulario login-->
+        <div class="form-container">
+            <img src="../images/login.png" alt="logo-login" class="logo-login">
+            <h2>Te damos la bienvenida a Waste Tracker</h2>
+
+            <form action="/login" class="form" id="login">
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="email" placeholder="Correo" class="input input-email" name="correo"
+                    autocomplete="current-correo" required>
+
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="password" placeholder="Contraseña" class="input input-password"
+                    name="contrasenia" autocomplete="current-password" required>
+
+                <input type="submit" value="Iniciar sesión" class="boton-iniciar-sesion">
+            </form>
+
+            <p class="sin-cuenta">¿No tienes una cuenta? <a href="#" class="link-a-registro"
+                    onclick="showRegister()">Regístrate</a></p>
+        </div>
+    </div>
+
+    <div class="register" id="registerFormRestaurante" style="display: none;">
+        <div class="form-container">
+            <img src="../images/registroRestaurante.png" alt="logo-registro" class="logo-login">
+            <h2>Registra a tu restaurante</h2>
+    
+            <!-- Formulario de registro del restaurante -->
+            <form id="formRegistroRestaurante" class="form" method="POST">
+                <label for="user" class="label">Usuario</label>
+                <input type="text" id="user" placeholder="Nombre de usuario" class="input input-text" name="usuario"
+                    required>
+    
+                <label for="responsableName" class="label">Nombre</label>
+                <input type="text" id="responsableName" placeholder="Nombre del responsable" class="input input-text"
+                    name="nombre" required>
+    
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="registerEmail" placeholder="Correo" class="input input-email" name="correo">
+    
+                <label for="restaurantName" class="label">Restaurante</label>
+                <input type="text" id="restaurantName" placeholder="Nombre del Restaurante" class="input input-text"
+                    name="nombre_restaurante" required>
+    
+                <label for="addres" class="label">Dirección</label>
+                <input type="text" id="addres" placeholder="Dirección del restaurante" class="input input-text"
+                    name="direccion" required>
+    
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="registerPassword" placeholder="Contraseña" class="input input-password"
+                    name="contrasenia" required>
+    
+                <input type="submit" value="Regístrate" class="boton-registrar" id="boton-registro-restaurante">
+            </form>    
+        <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
+            <p class="sin-cuenta">¿No tienes un restaurante? <a href="#" class="link-a-registro" onclick="showRegisterRecolector()">Regístrate </a>como recolector</p>
+        </div>
+    </div>
+
+    <div class="registerRecolector" id="registerFormRecolector" style="display: none;">
+        <div class="form-container">
+            <img src="../images/registroRecolector.png" alt="logo-registroRecolector" class="logo-registroRecolector">
+            <h3>Ayúdanos a crear un futuro más verde</h3>
+
+            <form action="/registroRecolector" class="form" method="POST">
+                <label for="recolectorUser" class="label">Usuario</label>
+                <input type="text" id="recolectorUser" placeholder="Nombre de usuario" class="input input-text"
+                        name="usuario">
+
+                <label for="nombreR" class="label">Recolector</label>
+                <input type="text" id="nombreRec" placeholder="Nombre del recolector" class="input input-nombreR"
+                        name="nombre">
+
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="emailRec" placeholder="Correo" class="input input-email" name="correo"
+                        autocomplete="current-email">
+
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="passwordRec" placeholder="Contraseña" class="input input-password"
+                        name="contrasenia" autocomplete="current-password" suggested="password">
+
+                <input type="submit" value="Registrarse" class="boton-registrar" id="boton-registro-recolector">
+                <p id="successMessage" style="display:none;"></p>
+            </form>
+            <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login"
+                        onclick="showLogin()">Inicia sesión</a></p>
+        </div>
+    </div>
+
+    <!-- Pie de pagina (footer) -->
+    <footer class="seccion-oscura d-flex flex-column align-items-center justify-content-center" id="footer"> 
+    <img class="footer-logo" src="../images/icono-blanco.svg" alt="Logo del portafolio">
+        <p class="footer-texto text-center">Logremos un mundo mejor.<br>Un mundo más verde. 🌱</p>
+        <div class="derechos-de-autor">Waste Tracker (2024) &#169;</div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
+    <script src="../js/login.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('../service-worker.js')
+                .then(registration => {
+                    console.log('Service Worker registrado con éxito:', registration);
+                })
+                .catch(error => {
+                    console.log('Fallo en el registro del Service Worker:', error);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/calificacionesRecolector.css">
+    <title>Mis calificaciones</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="inicioRecolector.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <a href="/htmls/notificacionesRecolector.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="rating-card">
+            <h3>Mis calificaciones</h3>
+            <div class="user-info">
+                <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
+                <span class="user-name" id="userName">Nombre del recolector</span>
+            </div>
+            <div class="rating-summary">
+                <h2 id="averageRating">0</h2>
+                <div class="stars" id="starsContainer">
+                    &#9733;&#9733;&#9733;&#9733;&#9734; <!-- Estrellas dinámicas -->
+                </div>
+                <p id="totalRatings">0 calificaciones</p>
+            </div>
+        
+            <div class="rating-breakdown">
+                <div class="rating-bar">
+                    <span>5 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="fiveStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="fiveStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>4 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="fourStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="fourStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>3 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="threeStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="threeStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>2 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="twoStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="twoStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>1 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="oneStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="oneStarCount">0</span>
+                </div>
+            </div>
+        </div> 
+        <h3 class="titulo-calificaciones">Calificación de restaurante anónimo</h3>
+        <div id="rating-container"><p id="fechaCalificacion"></p>
+        </div> <!-- Contenedor donde aparecerán las calificaciones -->
+    </main>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
+            <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const authToken = localStorage.getItem('token');
+            const recolectorId = localStorage.getItem('recolector_id');
+            let recolectorNombre = localStorage.getItem('recolector_nombre');
+            const fechaCalificacion = localStorage.getItem('fecha_calificacion');
+    
+            if (!recolectorId) {
+                alert('No se encontró el ID del recolector. Por favor, inicie sesión nuevamente.');
+                window.location.href = 'login.html';
+                return;
+            }
+    
+            // Mostrar el nombre del recolector
+            document.getElementById('userName').textContent = recolectorNombre || "Nombre del recolector";
+    
+            // Mostrar la fecha de calificación
+            if (fechaCalificacion) {
+                const fechaFormateada = new Date(fechaCalificacion).toLocaleDateString('es-ES');
+                document.getElementById('fechaCalificacion').textContent = `Fecha de Calificación: ${fechaFormateada}`;
+            } else {
+                document.getElementById('fechaCalificacion').textContent = 'Fecha de Calificación no disponible.';
+            }
+    
+            try {
+                const response = await fetch(`/calificaciones-recolector/${recolectorId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+    
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+    
+                const data = await response.json();
+                if (data.success && data.calificaciones) {
+                    const calificaciones = data.calificaciones;
+    
+                    // Calcular el promedio de calificaciones
+                    const totalRatings = calificaciones.length;
+                    const sumRatings = calificaciones.reduce((sum, calificacion) => sum + calificacion.calificacion, 0);
+                    const averageRating = (sumRatings / totalRatings).toFixed(1);
+    
+                    document.getElementById('averageRating').textContent = averageRating;
+                    document.getElementById('totalRatings').textContent = `${totalRatings} calificaciones`;
+    
+                    // Actualizar las barras de calificación dinámicamente
+                    const ratingCounts = {
+                        5: calificaciones.filter(c => c.calificacion === 5).length,
+                        4: calificaciones.filter(c => c.calificacion === 4).length,
+                        3: calificaciones.filter(c => c.calificacion === 3).length,
+                        2: calificaciones.filter(c => c.calificacion === 2).length,
+                        1: calificaciones.filter(c => c.calificacion === 1).length
+                    };
+    
+                    document.getElementById('fiveStarBar').style.width = `${(ratingCounts[5] / totalRatings) * 100}%`;
+                    document.getElementById('fourStarBar').style.width = `${(ratingCounts[4] / totalRatings) * 100}%`;
+                    document.getElementById('threeStarBar').style.width = `${(ratingCounts[3] / totalRatings) * 100}%`;
+                    document.getElementById('twoStarBar').style.width = `${(ratingCounts[2] / totalRatings) * 100}%`;
+                    document.getElementById('oneStarBar').style.width = `${(ratingCounts[1] / totalRatings) * 100}%`;
+    
+                    document.getElementById('fiveStarCount').textContent = ratingCounts[5];
+                    document.getElementById('fourStarCount').textContent = ratingCounts[4];
+                    document.getElementById('threeStarCount').textContent = ratingCounts[3];
+                    document.getElementById('twoStarCount').textContent = ratingCounts[2];
+                    document.getElementById('oneStarCount').textContent = ratingCounts[1];
+    
+                    // Mostrar las estrellas dinámicamente según el promedio
+                    const starsContainer = document.getElementById('starsContainer');
+                    starsContainer.innerHTML = '&#9733;'.repeat(Math.round(averageRating)) + '&#9734;'.repeat(5 - Math.round(averageRating));
+    
+                    // Mostrar comentarios y fechas (limitando a las últimas 5 calificaciones)
+                    const ratingContainer = document.getElementById("rating-container");
+                    const ultimasCalificaciones = calificaciones.slice(0, 5);
+    
+                    if (ultimasCalificaciones.length > 0) {
+                        let calificacionesHTML = '';
+    
+                        ultimasCalificaciones.forEach(calificacion => {
+                            const fecha = new Date(calificacion.fechaCalificacion).toLocaleDateString('es-ES'); // Asegúrate de que calificacion.fecha esté definido
+    
+                            calificacionesHTML += `
+                                <div class="calificacion-card">
+                                    <div class="rating">
+                                        ${'&#9733;'.repeat(calificacion.calificacion)}
+                                        ${'&#9734;'.repeat(5 - calificacion.calificacion)}
+                                    </div>
+                                    <p>${calificacion.comentario || ' '}</p>
+                                    <p></p>
+                                </div>`;
+                        });
+    
+                        ratingContainer.innerHTML = calificacionesHTML;
+                    } else {
+                        ratingContainer.innerHTML = '<p>No tienes calificaciones disponibles.</p>';
+                    }
+                } else {
+                    alert('No se encontraron calificaciones para este recolector.');
+                }
+            } catch (error) {
+                console.error('Error al cargar las calificaciones del recolector:', error);
+                alert('Ocurrió un error al obtener las calificaciones. Por favor, intenta de nuevo más tarde.');
+            }
+        });
+    </script>    
+</body>
+</html>
+

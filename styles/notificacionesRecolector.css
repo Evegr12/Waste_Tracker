@@ -1,0 +1,246 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #fefdfd;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Estilos para el encabezado */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 15px 30px;
+    background-color: hsl(0, 0%, 100%);
+    color: #5b846c;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    z-index: 1000;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    width: 90px;
+    height: 70px;
+    margin-right: 25px;
+    margin-left: 20px;
+}
+
+.logo h1 {
+    font-size: 28px;
+    margin: 0;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: #333;
+    text-decoration: none;
+}
+
+nav img {
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    margin-right: 35px;
+    transition: transform 0.3s ease;
+}
+
+nav img:hover {
+    transform: scale(1.2);
+}
+
+.notificaciones-recolector {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 600px;
+    max-width: 100%;
+    margin: 20px auto;
+}
+
+.notifications {
+    max-height: 800px; /* Ajusta este valor según tus necesidades */
+    overflow-y: auto;  /* Habilita el scroll vertical */
+    border: 1px solid #ddd; /* Añade un borde opcional */
+    padding: 20px; /* Espacio interno */
+    background-color: #f9f9f9; /* Fondo para que contraste con las notificaciones */
+    margin-top: 30px; /* Margen superior opcional */
+}
+
+.notification-item {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+
+h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 2em;
+}
+
+.notification {
+    background-color: #f0f8f5;
+    border: 2px solid #a3d5c3;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+.notification .message {
+    margin: 0 0 15px 0;
+    font-weight: bold;
+}
+
+.notification .datetime {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1em;
+    color: #666666;
+}
+
+.datetime .date, .datetime .time {
+    display: block;
+}
+
+/* Estilos para el pie de página */
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #ffffff;
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.footer-nav {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+}
+
+.footer-nav a {
+    text-decoration: none;
+    color: #333;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
+.footer-nav img {
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+.calificaciones {
+    width: 55px !important;
+    height: 55px !important;
+}
+
+.footer-nav img:hover {
+    transform: scale(1.3);
+}
+
+/*Responsive*/
+@media (max-width: 768px) {
+    header {
+        padding: 10px 15px;
+    }
+
+    .logo h1 {
+        font-size: 24px;
+    }
+
+    nav {
+        flex-wrap: nowrap; /*elementos en fila */
+        gap: 10px; /* Ajusta el espacio entre los elementos */
+    }
+
+    nav img {
+        margin-right: 0;
+        width: 30px; /* Reduce el tamaño de los iconos */
+        height: 30px;
+    }
+
+    .notificaciones-recolector {
+        width: 100%;
+        padding: 15px;
+    }
+
+    .notification {
+        font-size: 1em;
+    }
+
+    footer {
+        padding: 5px 0;
+    }
+
+    .footer-nav img {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+
+@media (max-width: 480px) {
+    .logo img {
+        width: 70px;
+        height: 50px;
+        margin-right: 15px;
+    }
+
+    .logo h1 {
+        font-size: 20px;
+    }
+
+    nav {
+        flex-wrap: nowrap; /* Mantén los elementos en fila */
+        gap: 5px; /* Reduce el espacio entre los botones */
+    }
+
+    nav img {
+        width: 25px;
+        height: 25px;
+    }
+
+    h2 {
+        font-size: 1.5em;
+    }
+
+    .notificaciones-recolector {
+        padding: 10px;
+    }
+
+    .notification {
+        font-size: 0.9em;
+    }
+
+    .footer-nav img {
+        width: 25px;
+        height: 25px;
+    }
+}
