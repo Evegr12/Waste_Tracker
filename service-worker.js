@@ -1,4 +1,4 @@
-const CACHE_NAME = 'waste-tracker-cache-v1';
+const CACHE_NAME = 'waste-tracker-cache-v1.1.9';
 const urlsToCache = [
     '/',
     '/htmls/login.html',

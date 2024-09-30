@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -48,12 +47,12 @@
             const toggleSwitch = document.getElementById('toggle');
             const confirmButton = document.querySelector('.confirm-btn');
             confirmButton.style.opacity = '0.5';
-
+    
             // Evento para manejar el cambio de estado del switch
             toggleSwitch.addEventListener('change', function() {
                 confirmButton.style.opacity = this.checked ? '1' : '0.5';
             });
-
+    
             // Función para obtener las coordenadas del usuario
             function obtenerCoordenadas() {
                 return new Promise((resolve, reject) => {
@@ -75,11 +74,17 @@
                     }
                 });
             }
-
+    
+            // Función para guardar notificaciones en el localStorage
+            function guardarNotificacion(mensaje, fechaHora) {
+                let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+                notificaciones.push({ mensaje, fechaHora });
+                localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
+            }
+    
             // Función para verificar si ya existe una solicitud activa o pendiente
             async function verificarSolicitudExistente() {
                 const restaurantes_id = localStorage.getItem('restaurantes_id');
-
                 try {
                     const response = await fetch(`/solicitud-actual/${restaurantes_id}`, {
                         method: 'GET',
@@ -88,31 +93,22 @@
                             'Content-Type': 'application/json'
                         }
                     });
-
+    
                     if (!response.ok) {
+                        console.error(`Error del servidor: ${response.status} - ${response.statusText}`);
                         throw new Error(`Error del servidor: ${response.statusText}`);
                     }
-
+    
                     const data = await response.json();
-                    return data.tieneSolicitudPendiente;
+                    console.log("Verificación de solicitud pendiente:", data.tieneSolicitudPendiente);
+    
+                    return data.tieneSolicitudPendiente; // True si hay una solicitud pendiente
                 } catch (error) {
                     console.error('Error al verificar la solicitud existente:', error);
-                    return false;
+                    return false; // Si hay un error, tratamos como que no hay solicitud pendiente
                 }
             }
-
-            // Función para mostrar el mensaje temporal
-            function mostrarMensajeTemporal(mensaje, duracion) {
-                const mensajeTemporal = document.getElementById('mensajeTemporal');
-                mensajeTemporal.textContent = mensaje;
-                mensajeTemporal.style.display = 'block';
-
-                // Ocultar el mensaje después de la duración especificada
-                setTimeout(() => {
-                    mensajeTemporal.style.display = 'none';
-                }, duracion);
-            }
-
+    
             // Al hacer clic en el botón de confirmación
             confirmButton.addEventListener('click', async function(event) {
                 if (!toggleSwitch.checked) {
@@ -120,22 +116,22 @@
                     alert('Por favor, activa el switch para confirmar la recolección.');
                     return;
                 }
-
+    
                 // Verificar si ya hay una solicitud activa
                 const tieneSolicitudPendiente = await verificarSolicitudExistente();
                 if (tieneSolicitudPendiente) {
                     alert('Ya tienes una solicitud de recolección pendiente. Por favor, espera a que sea completada antes de realizar otra.');
                     return;
                 }
-
+    
                 try {
                     // Obtener coordenadas del usuario
                     const coordenadas = await obtenerCoordenadas();
-
+    
                     // Obtener el ID del restaurante y la dirección desde el localStorage
                     const restaurantes_id = localStorage.getItem('restaurantes_id');
                     const direccion = localStorage.getItem('direccion');
-
+    
                     // Validar que ambos valores existan antes de enviar la solicitud
                     if (!restaurantes_id || !direccion) {
                         alert('Error: No se pudo encontrar la información del restaurante o la dirección. Por favor, revisa e intenta de nuevo.');
@@ -158,51 +154,38 @@
                         .then(response => response.json())
                         .then(async data => {
                             if (data.message) {
-                                // Obtener el mensaje con ID=1 
+                                // Mostrar mensaje de éxito
+                                alert('¡Solicitud enviada exitosamente!');
+                                window.location.href = 'inicioRestaurante.html';
+    
+                                // Obtener el mensaje con ID=1
                                 const mensajeResponse = await fetch('/mensaje-recoleccion/1', {
                                     method: 'GET',
                                     headers: {
                                         'Authorization': 'Bearer ' + localStorage.getItem('token')
                                     }
                                 });
-
-                                const mensajeData = await mensajeResponse.json();
+    
+                                const mensaje = await mensajeResponse.json();
                                 if (mensajeData.texto) {
-
-                                    // Guardar la notificación con la fecha y hora
-                                    guardarNotificacion(mensajeData.texto, fechaHora);
-
-                                    // Mostrar el mensaje temporal
-                                    mostrarMensajeTemporal('Solicitud enviada con éxito', 3000); // Mostrar durante 3 segundos
-
-                                    // Redirigir después de 3 segundos
-                                    setTimeout(() => {
-                                        window.location.href = 'inicioRestaurante.html'; // Redirigir a la página de inicio
-                                    }, 3000);
+                                    const fechaHora = new Date().toLocaleString(); // Definir la fecha y hora actual
+                                    guardarNotificacion(mensaje, fechaHora); // Guardar la notificación con la fecha y hora
                                 }
                             } else {
-                                alert('Error al enviar la solicitud.');
+                                
                             }
                         })
                         .catch(error => {
-                            console.error('Error al enviar la solicitud:', error);
-                            alert('Hubo un error al enviar la solicitud. Por favor, intenta de nuevo.');
+
                         });
                     }
                 } catch (error) {
                     console.error('Error al obtener las coordenadas:', error);
-                    alert('Hubo un error al obtener las coordenadas. Por favor, activa la geolocalización e intenta de nuevo.');
+                    window.location.href = 'inicioRestaurante.html';
                 }
             });
         });
-
-
-        // Función para guardar notificaciones en el localStorage
-        function guardarNotificacion(mensaje, fechaHora) {
-                let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
-                notificaciones.push({ mensaje, fechaHora: new Date().toLocaleString() });
-                localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
-            }
-    </script>
+    </script>    
+        
 </body>
 </html>

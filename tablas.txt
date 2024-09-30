@@ -1,0 +1,16 @@
+CREATE TYPE tipo_usuario_enum AS ENUM ('recolector', 'restaurante');
+CREATE TABLE Usuarios (id SERIAL PRIMARY KEY, name_usuario VARCHAR(45) NOT NULL, nombre VARCHAR(45) NOT NULL, correo VARCHAR(45) NOT NULL UNIQUE, contrasenia VARCHAR(45) NOT NULL, tipo_usuario tipo_usuario_enum NOT NULL, foto VARCHAR(45));
+
+CREATE TABLE Restaurantes (id SERIAL PRIMARY KEY, recolecciones_finalizadas INT, id_usuarios INT REFERENCES Usuarios(id));
+
+CREATE TABLE Recolectores (id SERIAL PRIMARY KEY, recolecciones_finalizadas INT, id_usuarios INT REFERENCES Usuarios(id));
+
+CREATE TABLE Notificaciones (id SERIAL PRIMARY KEY, mensaje VARCHAR(45), fecha TIMESTAMP);
+
+CREATE TABLE Historial_recolecciones (id SERIAL PRIMARY KEY, fecha_fin TIMESTAMP NOT NULL, id_recolectores INT REFERENCES Recolectores(id), id_restaurantes INT REFERENCES Restaurantes(id));
+
+CREATE TABLE Solicitudes (id SERIAL PRIMARY KEY, bote_lleno BOOLEAN, direccion VARCHAR(45) NOT NULL, fecha DATE, hora TIME, id_restaurantes INT REFERENCES Restaurantes(id), id_recolectores INT REFERENCES Recolectores(id));
+
+CREATE TABLE Calificaciones (id SERIAL PRIMARY KEY, calificacion INT, id_restaurantes INT REFERENCES Restaurantes(id), id_recolectores INT REFERENCES Recolectores(id));
+
+CREATE TABLE Mensajes_de_solicitud (id SERIAL PRIMARY KEY, mensaje VARCHAR(45), fecha TIMESTAMP);
