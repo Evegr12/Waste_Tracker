@@ -7,13 +7,38 @@
     <title>Perfil del Restaurante</title>
 </head>
 <body>
+    <style>
+        /*Notificaciones*/
+        /* Estilo para el contador de notificaciones en la campana */
+        .campana-notificaciones {
+            position: relative;
+        }
+
+        .badge {
+            background-color: red;
+            color: white;
+            border-radius: 100%;
+            padding: 5px 10px;
+            font-size: 14px;
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            display: inline-block;
+        }
+    </style>
+
     <header>
         <div class="logo">
             <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
             <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
@@ -50,6 +75,35 @@
             <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+    <script>
+        const socket = io();
+        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+
+        if (!token) {
+            console.error('No se encontró el token JWT.');
+        }
+
+        const decodedToken = jwt_decode(token);
+        const usuarioId = decodedToken.id;
+        console.log('ID del usuario autenticado:', usuarioId);
+
+        socket.on('connect', () => {
+            socket.emit('registrarUsuario', usuarioId);
+            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+        });
+
+        socket.on('disconnect', () => {
+            console.log(`Socket desconectado: ${socket.id}`);
+        });
+        socket.on('notificacionUsuario', (data) => {
+            const { mensaje } = data;
+            mostrarMensajeEmergente(mensaje);
+            actualizarContadorNotificaciones();
+        });
+    </script>
     <!-- JavaScript para manejo de imagen de perfil -->
     <script>
         // Obtener el nombre del restaurante y mostrarlo
@@ -144,6 +198,30 @@
                         console.error('Error al obtener las recolecciones:', error);
                     });
                 }
+    </script>
+    <script>
+        // Función para actualizar la campana de notificaciones
+        function actualizarContadorNotificaciones() {
+                // Obtiene las notificaciones no leídas del servidor
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline';
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                });
+            }
+
+            // Llamar a la función para actualizar la campana cuando se carga la página
+            actualizarContadorNotificaciones();    
     </script>
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
     <script src="../js/login.js"></script>

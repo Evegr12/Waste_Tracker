@@ -1,5 +1,5 @@
-<!DOCTYPE html> 
-<html lang="en">
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +15,12 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html" id="notificacionesLink">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
             <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
@@ -24,11 +29,162 @@
     <main>
         <div class="notifications">
             <h2>Notificaciones</h2>
-            <div class="notifications-list">
+            <div class="notifications-list" id="notificationsList">
                 <!-- Aquí se agregarán las notificaciones dinámicamente -->
             </div>
         </div>
     </main>
+
+    <!-- Carga la biblioteca de Socket.IO -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script> <!-- Asegúrate de cargar jwt-decode -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async() => {
+            const socket = io();
+            // Llamada para marcar notificaciones como leídas al abrir la página
+            await fetch('/marcar-notificaciones-como-leidas', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                // Después de marcar como leídas, actualiza el contador
+                actualizarContadorNotificaciones();
+
+            // Extraer el token JWT desde las cookies
+            const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+
+            if (!token) {
+                console.error('No se encontró el token JWT.');
+                return;
+            }
+
+            // Decodificar el token JWT para obtener el usuarioId
+            const decodedToken = jwt_decode(token);
+            const usuarioId = decodedToken.id;  // Asegúrate de que el token tiene el campo 'id'
+            console.log('ID del usuario autenticado:', usuarioId);
+
+            socket.on('connect', () =>{
+                 // Registrar al usuario en el servidor con su usuario_id
+                socket.emit('registrarUsuario', usuarioId);
+                console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+            })
+
+            // Manejar la reconexión automática del socket
+            socket.on('connect', () => {
+                if (usuarioId) {
+                    // Re-emitir el evento para registrar al usuario nuevamente
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario reconectado con ID ${usuarioId} y socket: ${socket.id}`);
+                }
+            });
+
+            socket.on('disconnect', () => {
+                console.log(`Socket desconectado: ${socket.id}`);
+            });
+
+
+            const notificationList = document.getElementById('notificationsList');
+            const LIMIT = 10; // Límite de notificaciones a mostrar
+            const intervaloConsejo = 10 * 60 * 1000; // 10 minutos en milisegundos
+
+    
+            // Recibir notificaciones en tiempo real para el restaurante
+            socket.on('notificacionUsuario', (data) => {
+                console.log('Notificación recibida:', data);
+                mostrarNotificacion(data.mensaje, data.fecha);
+                actualizarContadorNotificaciones();
+            });
+    
+            // Función para mostrar una notificación
+            function mostrarNotificacion(mensaje, fecha) {
+                const notificationItem = document.createElement('div');
+                notificationItem.classList.add('notification');
+                notificationItem.innerHTML = `
+                    <p class="message">${mensaje}</p>
+                    <div class="datetime">
+                        <span class="date-time">${new Date(fecha).toLocaleString()}</span>
+                    </div>
+                `;
+                notificationList.appendChild(notificationItem); // Insertar la notificación al principio de la lista
+            }
+    
+            // Función para actualizar el contador de notificaciones
+            function actualizarContadorNotificaciones() {
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'  // Asegurarse de enviar cookies con la solicitud
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const contadorElement = document.getElementById('contadorNotificaciones');
+                    const notificacionesNoVistas = data.contador;
+                    if (notificacionesNoVistas > 0) {
+                        contadorElement.textContent = notificacionesNoVistas;
+                        contadorElement.style.display = 'inline-block';
+                    } else {
+                        contadorElement.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al actualizar el contador de notificaciones:', error);
+                });
+            }
+    
+            // Cargar notificaciones desde el servidor
+            function cargarNotificaciones() {
+                fetch('/notificaciones-restaurante', {
+                    method: 'GET',
+                    credentials: 'include'  // Asegurarse de enviar cookies con la solicitud
+                })
+                .then(response => response.json())
+                .then(notificaciones => {
+                    // Ordenar las notificaciones por fecha (más recientes primero)
+                    notificaciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    
+                    // Limitar la visualización a las 10 notificaciones más recientes
+                    const notificacionesLimitadas = notificaciones.slice(0, LIMIT);
+    
+                    // Vaciar la lista de notificaciones antes de volver a agregar
+                    notificationList.innerHTML = '';
+    
+                    notificacionesLimitadas.forEach((notificacion) => {
+                        mostrarNotificacion(notificacion.mensaje, notificacion.fecha);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error al cargar las notificaciones:', error);
+                });
+            }
+    
+            // Función para mostrar un consejo cada 10 minutos
+            function mostrarConsejo() {
+                fetch('/notificacion-consejo', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fechaHora = new Date().toISOString();
+                        mostrarNotificacion(`Consejo: ${data.texto}`, fechaHora);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar el consejo:', error);
+                });
+            }
+    
+            // Ejecutar mostrarConsejo al cargar la página y luego cada 10 minutos
+            mostrarConsejo();
+            setInterval(mostrarConsejo, intervaloConsejo);
+    
+            // Cargar notificaciones iniciales y actualizar el contador al cargar la página
+            cargarNotificaciones();
+            actualizarContadorNotificaciones();
+        });
+    </script>
+    
 
     <footer>
         <nav class="footer-nav">
@@ -37,64 +193,5 @@
             <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Función para obtener y mostrar el consejo si han pasado 4 horas
-            function obtenerConsejo() {
-                fetch('/notificacion-consejo')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            mostrarNotificacion(data.texto, Date.now());
-                            // Guardar el consejo en el localStorage y la fecha actual
-                            localStorage.setItem('ultimaVezConsejo', Date.now());
-                        }
-                    })
-                    .catch(error => console.error('Error al obtener el consejo:', error));
-            }
-
-            // Función para mostrar notificaciones en la lista
-            function mostrarNotificacion(mensaje, fechaHora) {
-                const notificationList = document.querySelector('.notifications-list');
-                // Crear el elemento de la notificación
-                const notificationItem = document.createElement('div');
-                notificationItem.classList.add('notification');
-                notificationItem.innerHTML = `
-                    <p class="message">${mensaje}</p>
-                    <div class="datetime">
-                        <span class="date-time">${new Date(fechaHora).toLocaleString() || ' '} </span>
-                    </div>
-                `;
-                // Insertar la notificación al principio
-                notificationList.prepend(notificationItem);
-
-                // Limitar a las últimas 12 notificaciones
-                if (notificationList.children.length > 12) {
-                    notificationList.removeChild(notificationList.lastChild);
-                }
-            }
-
-            // Verificar si han pasado 4 horas desde la última vez que se mostró un consejo
-            function comprobarUltimaVez() {
-                const ultimaVezConsejo = localStorage.getItem('ultimaVezConsejo');
-                const ahora = Date.now();
-                const cuatroHoras = 4 * 60 * 60 * 1000; // 4 horas en milisegundos
-
-                if (!ultimaVezConsejo || (ahora - ultimaVezConsejo) >= cuatroHoras) {
-                    obtenerConsejo(); // Obtener y mostrar un nuevo consejo
-                }
-            }
-
-            // Cargar notificaciones existentes del localStorage
-            const notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
-            notificaciones.forEach(notificacion => {
-                mostrarNotificacion(notificacion.mensaje, notificacion.fechaHora);
-            });
-
-            // Verificar y mostrar un consejo si corresponde
-            comprobarUltimaVez();
-        });
-    </script>
 </body>
 </html>

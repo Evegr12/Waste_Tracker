@@ -5,6 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitar Recolección de Residuos</title>
     <link rel="stylesheet" href="../styles/solicitudRecoleccion.css">
+    <style>
+        .mensaje-emergente {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745; /* Verde para éxito */
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none; /* Oculto por defecto */
+            z-index: 1000;
+            font-size: 1.2em;
+        }
+        .mensaje-error {
+            background-color: #dc3545; /* Rojo para error */
+        }
+        .notification-badge {
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 3px 8px;
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -13,7 +40,12 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge notification-badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
             <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
@@ -31,7 +63,7 @@
         </div>
         
         <!-- Contenedor para el mensaje temporal -->
-        <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
+        <div id="mensajeEmergente" class="mensaje-emergente"></div>
     </div>
 
     <footer>
@@ -42,70 +74,105 @@
         </nav>
     </footer>
 
+    <!-- Conexión a Socket.IO -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script> <!-- Añadido para decodificar JWT -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const socket = io();
+
+            // Extraer el token JWT desde las cookies
+            const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+
+            if (!token) {
+                console.error('No se encontró el token JWT.');
+                return;
+            }
+
+            // Decodificar el token JWT para obtener el usuarioId
+            const decodedToken = jwt_decode(token);
+            const usuarioId = decodedToken.id;  // Asegúrate de que el token tiene el campo 'id'
+            console.log('ID del usuario autenticado:', usuarioId);
+
+            socket.on('connect', () =>{
+                 // Registrar al usuario en el servidor con su usuario_id
+                socket.emit('registrarUsuario', usuarioId);
+                console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+            })
+
+            // Manejar la reconexión automática del socket
+            socket.on('connect', () => {
+                if (usuarioId) {
+                    // Re-emitir el evento para registrar al usuario nuevamente
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario reconectado con ID ${usuarioId} y socket: ${socket.id}`);
+                }
+            });
+
+            socket.on('disconnect', () => {
+                console.log(`Socket desconectado: ${socket.id}`);
+            });
+
+            // Manejo de las notificaciones en tiempo real con Socket.IO
+            socket.on('notificacionUsuario', (data) => {
+                const { mensaje } = data;
+                mostrarMensajeEmergente(mensaje);
+
+                // Actualiza la campana de notificaciones
+                actualizarCampana();
+            });
+
+            if (!token) {
+                console.error('No se encontró el token JWT.');
+                return;
+            }
+
             const toggleSwitch = document.getElementById('toggle');
             const confirmButton = document.querySelector('.confirm-btn');
+            const contadorNotificaciones = document.getElementById('contadorNotificaciones');
             confirmButton.style.opacity = '0.5';
     
             // Evento para manejar el cambio de estado del switch
             toggleSwitch.addEventListener('change', function() {
                 confirmButton.style.opacity = this.checked ? '1' : '0.5';
             });
+
+            function mostrarMensajeEmergente(mensaje, tipo = 'exito') {
+                const mensajeEmergente = document.getElementById('mensajeEmergente');
+                mensajeEmergente.textContent = mensaje;
     
-            // Función para obtener las coordenadas del usuario
-            function obtenerCoordenadas() {
-                return new Promise((resolve, reject) => {
-                    if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            (position) => {
-                                const coords = {
-                                    lat: position.coords.latitude,
-                                    lon: position.coords.longitude
-                                };
-                                resolve(coords);
-                            },
-                            (error) => {
-                                reject(error);
-                            }
-                        );
-                    } else {
-                        reject(new Error('La geolocalización no es soportada por este navegador.'));
-                    }
-                });
+                if (tipo === 'error') {
+                    mensajeEmergente.classList.add('mensaje-error');
+                } else {
+                    mensajeEmergente.classList.remove('mensaje-error');
+                }
+    
+                mensajeEmergente.style.display = 'block';
+    
+                // Desaparece automáticamente después de 3 segundos
+                setTimeout(() => {
+                    mensajeEmergente.style.display = 'none';
+                }, 3000);
             }
-    
-            // Función para guardar notificaciones en el localStorage
-            function guardarNotificacion(mensaje, fechaHora) {
-                let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
-                notificaciones.push({ mensaje, fechaHora });
-                localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
-            }
-    
+
             // Función para verificar si ya existe una solicitud activa o pendiente
             async function verificarSolicitudExistente() {
-                const restaurantes_id = localStorage.getItem('restaurantes_id');
                 try {
-                    const response = await fetch(`/solicitud-actual/${restaurantes_id}`, {
+                    const response = await fetch(`/solicitud-actual/${usuarioId}`, {
                         method: 'GET',
-                        headers: {
-                            'Authorization': 'Bearer ' + localStorage.getItem('token'),
-                            'Content-Type': 'application/json'
-                        }
+                        credentials: 'include'
                     });
-    
+
                     if (!response.ok) {
                         console.error(`Error del servidor: ${response.status} - ${response.statusText}`);
                         throw new Error(`Error del servidor: ${response.statusText}`);
                     }
     
                     const data = await response.json();
-                    console.log("Verificación de solicitud pendiente:", data.tieneSolicitudPendiente);
-    
                     return data.tieneSolicitudPendiente; // True si hay una solicitud pendiente
                 } catch (error) {
                     console.error('Error al verificar la solicitud existente:', error);
-                    return false; // Si hay un error, tratamos como que no hay solicitud pendiente
+                    return false;
                 }
             }
     
@@ -113,79 +180,107 @@
             confirmButton.addEventListener('click', async function(event) {
                 if (!toggleSwitch.checked) {
                     event.preventDefault();
-                    alert('Por favor, activa el switch para confirmar la recolección.');
+                    mostrarMensajeEmergente('Por favor, activa el switch para confirmar la recolección.', 'error');
                     return;
                 }
     
                 // Verificar si ya hay una solicitud activa
                 const tieneSolicitudPendiente = await verificarSolicitudExistente();
                 if (tieneSolicitudPendiente) {
-                    alert('Ya tienes una solicitud de recolección pendiente. Por favor, espera a que sea completada antes de realizar otra.');
+                    mostrarMensajeEmergente('Ya tienes una solicitud de recolección pendiente. Espera que sea completada.', 'error');
                     return;
                 }
     
                 try {
-                    // Obtener coordenadas del usuario
-                    const coordenadas = await obtenerCoordenadas();
+                    // Obtener la información del restaurante desde el servidor
+                    const response = await fetch('/restaurante-info', {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                    const text = await response.text(); // Lee la respuesta como texto
+                    console.log('Respuesta del servidor:', text); // Imprime la respuesta
+                    
+                    const restaurante = JSON.parse(text); 
     
-                    // Obtener el ID del restaurante y la dirección desde el localStorage
-                    const restaurantes_id = localStorage.getItem('restaurantes_id');
-                    const direccion = localStorage.getItem('direccion');
-    
-                    // Validar que ambos valores existan antes de enviar la solicitud
-                    if (!restaurantes_id || !direccion) {
-                        alert('Error: No se pudo encontrar la información del restaurante o la dirección. Por favor, revisa e intenta de nuevo.');
+                    if (!restaurante.id || !restaurante.direccion) {
+                        mostrarMensajeEmergente('Error: No se pudo encontrar la información del restaurante. Por favor, revisa e intenta de nuevo.', 'error');
                     } else {
-                        // Si los valores existen, enviar la solicitud al servidor
+                        // Enviar la solicitud al servidor
                         fetch('/solicitar-recoleccion', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + localStorage.getItem('token')
-                            },
-                            body: JSON.stringify({
-                                restaurantes_id: restaurantes_id,
-                                direccion: direccion,
-                                lat: coordenadas.lat,
-                                lon: coordenadas.lon,
-                                estado: "pendiente"
-                            })
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            restaurantes_id: restaurante.id,
+                            direccion: restaurante.direccion,
+                            estado: "pendiente"
                         })
-                        .then(response => response.json())
-                        .then(async data => {
-                            if (data.message) {
-                                // Mostrar mensaje de éxito
-                                alert('¡Solicitud enviada exitosamente!');
-                                window.location.href = 'inicioRestaurante.html';
-    
-                                // Obtener el mensaje con ID=1
-                                const mensajeResponse = await fetch('/mensaje-recoleccion/1', {
-                                    method: 'GET',
-                                    headers: {
-                                        'Authorization': 'Bearer ' + localStorage.getItem('token')
-                                    }
-                                });
-    
-                                const mensaje = await mensajeResponse.json();
-                                if (mensajeData.texto) {
-                                    const fechaHora = new Date().toLocaleString(); // Definir la fecha y hora actual
-                                    guardarNotificacion(mensaje, fechaHora); // Guardar la notificación con la fecha y hora
-                                }
-                            } else {
-                                
-                            }
+                        })
+                        .then(response => {
+                        // Verificar si la respuesta es exitosa (status 200-299)
+                        if (!response.ok) {
+                            console.error('Error en la respuesta del servidor:', response.status, response.statusText);
+                            throw new Error('Error en la respuesta del servidor');
+                        }
+                        return response.json();
+                        })
+                        .then(data => {
+                        // Verificar si se recibe el mensaje esperado
+                        if (data.message) {
+                            mostrarMensajeEmergente('¡Solicitud enviada exitosamente!');
+                            window.location.href = 'inicioRestaurante.html';
+                        } else {
+                            throw new Error('Respuesta inesperada del servidor');
+                        }
                         })
                         .catch(error => {
-
+                        console.error('Error al enviar la solicitud de recolección:', error);
+                        mostrarMensajeEmergente('Error al enviar la solicitud de recolección.', 'error');
                         });
+
                     }
                 } catch (error) {
-                    console.error('Error al obtener las coordenadas:', error);
-                    window.location.href = 'inicioRestaurante.html';
+                    console.error('Error al obtener la información del restaurante:', error);
+                    mostrarMensajeEmergente('Error al obtener la información del restaurante.', 'error');
                 }
             });
+
+            // Manejo de las notificaciones en tiempo real con Socket.IO
+            socket.on('notificacionUsuario', (data) => {
+                const { mensaje } = data;
+                mostrarMensajeEmergente(mensaje);
+
+                // Actualiza la campana de notificaciones
+                actualizarCampana();
+            });
+
+            // Función para actualizar la campana de notificaciones
+            function actualizarCampana() {
+                // Obtiene las notificaciones no leídas del servidor
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline';
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                });
+            }
+
+            // Llamar a la función para actualizar la campana cuando se carga la página
+            actualizarCampana();
         });
-    </script>    
-        
+    </script>
 </body>
 </html>
+
+

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waste Tracker</title>
+    <title>Waste Tracker - Inicio Restaurante</title>
     <link rel="stylesheet" href="../styles/stylesRestaurante.css">
 </head>
 <body>
@@ -13,10 +13,27 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge notification-badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
             <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
+        <style>
+            .notification-badge {
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 3px 8px;
+            position: absolute;
+            top: 0;
+            right: 0;
+            font-size: 12px;
+        }
+        </style>
     </header>
     
     <main>
@@ -25,8 +42,8 @@
             <img src="../images/cero-desperdicios.webp" alt="Cero desperdicios">
         </section>
         <section class="affiliation">
-            <h2></h2>
-            <img src="../images/reciclar.jpg" alt="Más clientes, más ventas, más impacto">
+            <h2>Más clientes, más ventas, más impacto</h2>
+            <img src="../images/reciclar.jpg" alt="Reciclar">
         </section>
     </main>
 
@@ -37,5 +54,74 @@
             <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
         </nav>
     </footer>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
+
+            // Extraer el token JWT desde las cookies
+            const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+
+            if (!token) {
+                console.error('No se encontró el token JWT.');
+                return;
+            }
+
+            // Decodificar el token JWT para obtener el usuarioId
+            const decodedToken = jwt_decode (token);
+            const usuarioId = decodedToken.id;  // Asegúrate de que el token tiene el campo 'id'
+            console.log('ID del usuario autenticado:', usuarioId);
+
+            socket.on('connect', () =>{
+                 // Registrar al usuario en el servidor con su usuario_id
+                socket.emit('registrarUsuario', usuarioId);
+                console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+            })
+
+            // Manejar la reconexión automática del socket
+            socket.on('connect', () => {
+                if (usuarioId) {
+                    // Re-emitir el evento para registrar al usuario nuevamente
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario reconectado con ID ${usuarioId} y socket: ${socket.id}`);
+                }
+            });
+
+            socket.on('disconnect', () => {
+                console.log(`Socket desconectado: ${socket.id}`);
+            });
+
+            socket.on('notificacionUsuario', (data) => {
+                const { mensaje } = data;
+                mostrarMensajeEmergente(mensaje);
+
+                // Actualiza la campana de notificaciones
+                actualizarContadorNotificaciones();
+            });
+
+            function actualizarContadorNotificaciones() {
+                // Obtiene las notificaciones no leídas del servidor
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline-block';
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                });
+            }
+
+            // Llamar a la función para actualizar la campana cuando se carga la página
+            actualizarContadorNotificaciones();
+        });
+    </script>
 </body>
 </html>

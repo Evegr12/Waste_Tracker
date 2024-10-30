@@ -23,6 +23,25 @@ header {
     z-index: 1000;
 }
 
+/*Notificaciones*/
+/* Estilo para el contador de notificaciones en la campana */
+.campana-notificaciones {
+    position: relative;
+}
+
+.badge {
+    background-color: red;
+    color: white;
+    border-radius: 100%;
+    padding: 5px 10px;
+    font-size: 14px;
+    position: absolute;
+    top: -10px;
+    right: 33px;
+    display: inline-block;
+}
+
+
 .logo {
     display: flex;
     align-items: center;

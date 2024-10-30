@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waste Tracker - Inicio Restaurante</title>
+    <link rel="stylesheet" href="../styles/stylesRestaurante.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
+            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+    
+    <main>
+        <section class="advice">
+            <h2>Comienza tu día con estos consejos!</h2>
+            <img src="../images/cero-desperdicios.webp" alt="Cero desperdicios">
+        </section>
+        <section class="affiliation">
+            <h2>Más clientes, más ventas, más impacto</h2>
+            <img src="../images/reciclar.jpg" alt="Reciclar">
+        </section>
+    </main>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/solicitudRecoleccion.html"><img src="../images/bote-icon.png" alt="Bote"></a>
+            <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            function actualizarContadorNotificaciones() {
+                const notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
+                const contadorElement = document.getElementById('contadorNotificaciones');
+
+                const notificacionesNoVistas = notificaciones.filter(n => !n.vista);
+                if (notificacionesNoVistas.length > 0) {
+                    contadorElement.textContent = notificacionesNoVistas.length;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            }
+
+            // Cargar el contador de notificaciones al cargar la página
+            actualizarContadorNotificaciones();
+        });
+    </script>
+</body>
+</html>

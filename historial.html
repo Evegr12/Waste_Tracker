@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de Residuos Vertidos</title>
+    <link rel="stylesheet" href="../styles/historial.css">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Integración de Socket.IO -->
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
+            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <div class="history">
+        <h2>Historial de residuos vertidos</h2>
+        <div class="scroll-container">
+            <div id="historial-container">
+                <!-- Aquí se cargarán las entradas del historial dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/solicitudRecoleccion.html"><img src="../images/bote-icon.png" alt="Bote"></a>
+            <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const socket = io(); // Inicializa Socket.IO para la conexión en tiempo real
+            const historialContainer = document.getElementById('historial-container');
+
+            const restaurantesId = localStorage.getItem('restaurantes_id'); // Obtener ID del restaurante
+
+            if (!restaurantesId) {
+                alert('No se encontró el ID del restaurante. Por favor, inicie sesión nuevamente.');
+                window.location.href = '/htmls/login.html';
+                return;
+            }
+
+            // Solicitar historial de recolecciones
+            socket.emit('obtenerHistorialRecolecciones', { restaurantesId });
+
+            // Escuchar el evento de historial de recolecciones
+            socket.on('historialRecolecciones', (data) => {
+                if (data.success && data.recolecciones.length > 0) {
+
+                    data.recolecciones.forEach(recoleccion => {
+                        const recolectorNombre = recoleccion.recolectore && recoleccion.recolectore.usuario
+                            ? recoleccion.recolectore.usuario.nombre
+                            : 'Recolector';
+    
+                        const fechaFin = recoleccion.fecha_recoleccion
+                            ? new Date(recoleccion.fecha_recoleccion).toLocaleString('es-ES')
+                            : 'Fecha no disponible';
+    
+                        const entry = document.createElement('div');
+                        entry.classList.add('entry');
+    
+                        entry.innerHTML = `
+                            <div class="entry-header">
+                                <span class="by">Por:</span>
+                                <img src="../images/perfil-icon.png" alt="User Icon" class="user-icon">
+                                <span class="name">${recolectorNombre}</span>
+                            </div>
+                            <div class="entry-info">
+                                <span class="date-time">${fechaFin}</span>
+                            </div>
+                        `;
+                        historialContainer.prepend(entry); // Agregar la entrada al inicio
+                    });
+                } else {
+                    historialContainer.innerHTML = '<p>No hay recolecciones finalizadas.</p>';
+                }
+            });
+
+            // Escuchar actualizaciones del contador de notificaciones en tiempo real
+            socket.on('nuevaNotificacion', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Solicitar el contador de notificaciones al cargar la página
+            socket.emit('obtenerContadorNotificaciones');
+
+            // Escuchar el contador de notificaciones
+            socket.on('contadorNotificaciones', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Función para actualizar el contador de notificaciones
+            function actualizarContadorNotificaciones(cantidad) {
+                const contadorElement = document.getElementById('contadorNotificaciones');
+                if (cantidad > 0) {
+                    contadorElement.textContent = cantidad;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/calificaciones.css">
+    <title>Calificar Servicio</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const socket = io(); // Inicializa Socket.IO para la conexión en tiempo real
+            const contadorElement = document.getElementById('contadorNotificaciones'); // Elemento del contador de notificaciones
+
+            function mostrarMensajeTemporal(mensaje, duracion) {
+                const mensajeTemporal = document.getElementById('mensajeTemporal');
+                mensajeTemporal.textContent = mensaje;
+                mensajeTemporal.style.display = 'block';
+
+                setTimeout(() => {
+                    mensajeTemporal.style.display = 'none';
+                }, duracion);
+            }
+
+            // Emitir evento para obtener la última recolección sin calificar
+            socket.emit('obtenerUltimaRecoleccionSinCalificar');
+
+            // Escuchar la respuesta del servidor con la última recolección sin calificar
+            socket.on('ultimaRecoleccionSinCalificar', (data) => {
+                const ratingContainer = document.getElementById("rating-container");
+
+                if (data.recoleccion) {
+                    const recoleccion = data.recoleccion;
+
+                    const calificacionHTML = `
+                        <div class="rating-card">
+                            <div class="user-info">
+                                <span class="user-name">Recolector: ${recoleccion.recolectore.usuario.nombre}</span>
+                            </div>
+                            <div class="rating" data-selected-rating="0">
+                                <span class="star" data-value="1">&#9733;</span>
+                                <span class="star" data-value="2">&#9733;</span>
+                                <span class="star" data-value="3">&#9733;</span>
+                                <span class="star" data-value="4">&#9733;</span>
+                                <span class="star" data-value="5">&#9733;</span>
+                            </div>
+                            <textarea class="comment-box" placeholder="Escribe un comentario" rows="4"></textarea><br>
+                            <button class="submitRating" data-recoleccion-id="${recoleccion.id}">Enviar calificación</button>
+                        </div>
+                    `;
+
+                    ratingContainer.innerHTML = calificacionHTML;
+
+                    document.querySelectorAll('.star').forEach(star => {
+                        star.addEventListener('click', (e) => {
+                            const selectedValue = e.target.getAttribute('data-value');
+                            const parentRating = e.target.parentNode;
+                            parentRating.setAttribute('data-selected-rating', selectedValue);
+
+                            Array.from(parentRating.children).forEach(s => {
+                                s.style.color = s.getAttribute('data-value') <= selectedValue ? 'gold' : 'black';
+                            });
+                        });
+                    });
+
+                    // Manejo del envío de la calificación
+                    document.querySelector('.submitRating').addEventListener('click', async (event) => {
+                        const recoleccionId = event.target.getAttribute('data-recoleccion-id');
+                        const ratingElement = document.querySelector('.rating');
+                        const ratingValue = ratingElement.getAttribute('data-selected-rating');
+                        const commentValue = document.querySelector('.comment-box').value;
+                        const fechaCalificacion = new Date().toISOString(); // Captura la fecha actual
+
+                        if (!recoleccionId || ratingValue === '0') {
+                            alert('Por favor selecciona una calificación antes de enviar.');
+                            return;
+                        }
+
+                        // Emitir evento de calificación usando sockets
+                        socket.emit('enviarCalificacion', {
+                            recoleccionId,
+                            calificacion: parseInt(ratingValue, 10),
+                            comentario: commentValue,
+                            fechaCalificacion
+                        });
+                    });
+                } else {
+                    // Mostrar mensaje si no hay recolecciones pendientes
+                    const ratingContainer = document.getElementById("rating-container");
+                    ratingContainer.innerHTML = `<p>No hay recolecciones pendientes para calificar.</p>`;
+                }
+            });
+
+            // Escuchar el evento de confirmación de calificación enviada
+            socket.on('calificacionEnviada', (data) => {
+                mostrarMensajeTemporal('¡Calificación enviada exitosamente!', 3000);
+                const submitButton = document.querySelector('.submitRating');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Calificación enviada';
+
+                // Alternativa: Mostrar mensaje de que no hay más calificaciones
+                const ratingContainer = document.getElementById("rating-container");
+                ratingContainer.innerHTML = `<p>No hay más recolecciones por calificar.</p>`;
+            });
+
+            // Manejar errores al enviar la calificación
+            socket.on('errorCalificacion', (data) => {
+                alert(`Error al enviar la calificación: ${data.message}`);
+            });
+
+            // Escuchar notificaciones en tiempo real para actualizar el contador
+            socket.on('nuevaNotificacion', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Función para actualizar el contador de notificaciones
+            function actualizarContadorNotificaciones(cantidad) {
+                if (cantidad > 0) {
+                    contadorElement.textContent = cantidad;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            }
+
+            // Solicitar el contador de notificaciones al cargar la página
+            socket.emit('obtenerContadorNotificaciones');
+
+            // Escuchar el contador de notificaciones al cargar la página
+            socket.on('contadorNotificaciones', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span> <!-- Contador de notificaciones -->
+                </a>
+            </div>
+            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
+            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+    <h2>Calificar servicio</h2>
+    <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
+    <div id="rating-container"></div>
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/solicitudRecoleccion.html"><img src="../images/bote-icon.png" alt="Bote"></a>
+            <a href="/htmls/calificaciones.html"><img src="../images/calif-icon.png" alt="Calificar" id="calificar"></a>
+        </nav>
+    </footer>
+</body>
+</html>

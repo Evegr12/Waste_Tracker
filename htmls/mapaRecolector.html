@@ -10,13 +10,27 @@
             height: 900px;
             width: 100%;
         }
-        /* Mejora visual para los botones de checkbox */
         .popup-buttons {
             margin-top: 10px;
         }
         .accepted-popup {
             background-color: lightgreen;
             font-weight: bold;
+        }
+        .mensaje-emergente {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+            font-size: 1.2em;
+        }
+        .mensaje-error {
+            background-color: #dc3545;
         }
     </style>
 </head>
@@ -27,7 +41,12 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificacionesRecolector.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
@@ -35,19 +54,73 @@
     <center><h1>Solicitudes de Recolección</h1></center>
 
     <div id="map"></div>
+    <div id="mensajeEmergente" class="mensaje-emergente"></div>
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet.offline@1.0.0/leaflet.offline.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+
     <script>
-        // Inicializa el mapa
-        const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
-        
-        // Agrega una capa de tile map
+        const socket = io();
+        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+
+        if (!token) {
+            console.error('No se encontró el token JWT.');
+        }
+
+        const decodedToken = jwt_decode(token);
+        const usuarioId = decodedToken.id;
+        console.log('ID del usuario autenticado:', usuarioId);
+
+        socket.on('connect', () => {
+            socket.emit('registrarUsuario', usuarioId);
+            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+        });
+
+        socket.on('disconnect', () => {
+            console.log(`Socket desconectado: ${socket.id}`);
+        });
+
+        socket.on('notificacionUsuario', (data) => {
+            const { mensaje } = data;
+            mostrarMensajeEmergente(mensaje);
+            actualizarContadorNotificaciones();
+        });
+
+        socket.on('nuevaSolicitud', (solicitud) => {
+            agregarMarcadorSolicitud(solicitud);
+        });
+
+        function agregarMarcadorSolicitud(solicitud) {
+            const marker = L.marker([solicitud.latitude, solicitud.longitude], { icon: iconPending })
+                .addTo(map)
+                .bindPopup(`
+                    <p><b>Restaurante:</b> ${solicitud.nombre}</p>
+                    <p><b>Dirección:</b> ${solicitud.direccion}</p>
+                `);
+        }
+
+        //actualiza el mapa
+        socket.on('actualizarMapa', (data) => {
+
+            const solicitudId = data.solicitudId;
+            const nuevoEstado = data.estado;
+            //actualiza el marcador en el mapa según el nuevo estado
+            if (markers[solicitudId]) {
+                const marker = markers[solicitudId].marker;
+                // Cambia el icono del marcador según el nuevo estado
+                marker.setIcon(nuevoEstado === 'en proceso' ? iconAccepted : iconPending);
+            }
+        });
+    </script>
+
+    <script>
+        const map = L.map('map').setView([19.4326, -99.1332], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-        
-        // Icono para solicitudes pendientes
+
         const iconPending = L.icon({
             iconUrl: '../images/marker-icon-red.png',
             iconSize: [85, 41],
@@ -55,26 +128,22 @@
             popupAnchor: [1, -34],
             shadowSize: [41, 41]
         });
-        
-        // Icono para solicitudes aceptadas (cambio de color para mejor visibilidad)
         const iconAccepted = L.icon({
-            iconUrl: '../images/marker-icon-purple.png', // Cambia el URL del ícono a uno rojo
+            iconUrl: '../images/marker-icon-purple.png',
             iconSize: [75, 41],
             iconAnchor: [42, 41],
             popupAnchor: [1, -34],
             shadowSize: [41, 41]
         });
-        
+
         const markers = {};
-        
+
         fetch('/solicitudes-pendientes', {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
+            method: 'GET',
+            credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
-            console.log(data);  // Inspecciona la respuesta para verificar si es un arreglo
             if (Array.isArray(data)) {
                 data.forEach(request => {
                     if (request.restaurante.latitude && request.restaurante.longitude) {
@@ -96,81 +165,78 @@
         })
         .catch(error => console.error('Error fetching requests:', error));
 
-        
         async function confirmarAceptacion(id) {
-            const authToken = localStorage.getItem('token');
-            if (!authToken) {
-                alert('No estás autenticado. Por favor, inicia sesión.');
-                return;
-            }
-        
             try {
                 const response = await fetch('/aceptar-recolecciones', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
+                        'Content-Type': 'application/json'
                     },
+                    credentials: 'include',
                     body: JSON.stringify({ recoleccion_id: id })
                 });
+
                 const data = await response.json();
-        
-                if (data.message) {
+
+                if (data.message === 'Solicitud aceptada y ahora está en proceso') {
                     if (markers[id]) {
-                        markers[id].marker.setIcon(iconAccepted); // Cambia el ícono a uno aceptado
+                        markers[id].marker.setIcon(iconAccepted);
                         markers[id].accepted = true;
-        
-                        // Cambia el estilo del popup para mostrar que está aceptado
+
                         const popup = markers[id].marker.getPopup();
                         popup.setContent(`<div class="accepted-popup"><b class="sol-aceptada">Solicitud aceptada</b></div>`);
                         markers[id].marker.bindPopup(popup);
-        
-                        // Enviar notificación al restaurante (notificación con ID=2)
-                        const mensajeResponseRestaurante = await fetch(`/mensaje-recoleccion/2`, {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${authToken}`
-                            }
-                        });
-                        const mensajeRestaurante = await mensajeResponseRestaurante.json();
-        
-                        // Guardar notificación del restaurante
-                        guardarNotificacionRestaurante(id, mensajeRestaurante.texto, new Date().toLocaleString(), 'restaurante');
                     }
-        
-                    const mensajeResponse = await fetch('/mensaje-recoleccion/8', {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    });
-                    const mensaje = await mensajeResponse.json();
-        
-                    guardarNotificacion(mensaje.texto, new Date().toLocaleString(), 'recolector');
-                } else {
-                    alert('Error al aceptar las recolecciones.');
+                    mostrarMensajeEmergente('Solicitud aceptada correctamente.');
+                } else if (data.error) {
+                    mostrarMensajeEmergente(`Error: ${data.error}`, 'error');
                 }
             } catch (error) {
-                console.error('Error al aceptar la recoleccion:', error);
-                alert('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.');
+                console.error('Error al aceptar la recolección:', error);
+                mostrarMensajeEmergente('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.', 'error');
             }
         }
-        
-        // Función para guardar la notificación en el recolector
-        function guardarNotificacion(mensaje, fechaHora, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
-            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
-            localStorage.setItem('notificacionesRecolector', JSON.stringify(notificaciones));
+
+        function mostrarMensajeEmergente(mensaje, tipo = 'exito') {
+            const mensajeEmergente = document.getElementById('mensajeEmergente');
+            mensajeEmergente.textContent = mensaje;
+
+            if (tipo === 'error') {
+                mensajeEmergente.classList.add('mensaje-error');
+            } else {
+                mensajeEmergente.classList.remove('mensaje-error');
+            }
+
+            mensajeEmergente.style.display = 'block';
+            setTimeout(() => {
+                mensajeEmergente.style.display = 'none';
+            }, 3000);
         }
-        
-        // Función para guardar la notificación en el restaurante
-        function guardarNotificacionRestaurante(id, mensaje, fechaHora, tipo) {
-            let notificaciones = JSON.parse(localStorage.getItem('notificaciones')) || [];
-            notificaciones.push({ mensaje, fechaHora: new Date().toISOString(), tipo });
-            localStorage.setItem('notificaciones', JSON.stringify(notificaciones));
-        }
-        </script>
-        
+
+        // Función para actualizar la campana de notificaciones
+        function actualizarContadorNotificaciones() {
+                // Obtiene las notificaciones no leídas del servidor
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline';
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                });
+            }
+
+            // Llamar a la función para actualizar la campana cuando se carga la página
+            actualizarContadorNotificaciones();
+    </script>
+    
     <footer>
         <nav class="footer-nav">
             <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>

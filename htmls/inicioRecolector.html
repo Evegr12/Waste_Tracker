@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Waste Tracker - Inicio Recolector</title>
     <link rel="stylesheet" href="../styles/inicioRecolector.css">
 </head>
 <body>
@@ -13,7 +13,12 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificacionesRecolector.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
@@ -44,5 +49,63 @@
             </div>
         </nav>
     </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+
+        if (!token) {
+            console.error('No se encontró el token JWT.');
+        }
+
+        const decodedToken = jwt_decode(token);
+        const usuarioId = decodedToken.id;
+        console.log('ID del usuario autenticado:', usuarioId);
+
+        socket.on('connect', () => {
+            socket.emit('registrarUsuario', usuarioId);
+            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+        });
+
+        socket.on('disconnect', () => {
+            console.log(`Socket desconectado: ${socket.id}`);
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Solicitar el contador de notificaciones al cargar la página
+            socket.emit('obtenerContadorNotificaciones');
+
+            // Escuchar actualizaciones del contador de notificaciones en tiempo real
+            socket.on('nuevaNotificacion', (data) => {
+                actualizarContadorNotificaciones();
+            });
+
+            function actualizarContadorNotificaciones() {
+                // Obtiene las notificaciones no leídas del servidor
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline';
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                });
+            }
+
+            // Llamar a la función para actualizar la campana cuando se carga la página
+            actualizarContadorNotificaciones();
+        });
+    </script>
 </body>
 </html>

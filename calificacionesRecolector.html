@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/calificacionesRecolector.css">
+    <title>Calificaciones Recolector</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Integración de Socket.IO -->
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="rating-card">
+            <h3>Mis calificaciones</h3>
+            <div class="user-info">
+                <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
+                <span class="user-name" id="userName">Nombre del recolector</span>
+            </div>
+            <div class="rating-summary">
+                <h2 id="averageRating">0</h2>
+                <div class="stars" id="starsContainer">
+                    &#9733;&#9733;&#9733;&#9733;&#9734; <!-- Estrellas dinámicas -->
+                </div>
+                <p id="totalRatings">0 calificaciones</p>
+            </div>
+        
+            <div class="rating-breakdown">
+                <!-- Barras de calificación -->
+                <div class="rating-bar">
+                    <span>5 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="fiveStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="fiveStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>4 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="fourStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="fourStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>3 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="threeStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="threeStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>2 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="twoStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="twoStarCount">0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>1 </span>
+                    <div class="bar">
+                        <div class="filled-bar" id="oneStarBar"></div>
+                    </div>
+                    <span class="rating-count" id="oneStarCount">0</span>
+                </div>
+            </div>
+        </div> 
+        <h3 class="titulo-calificaciones">Calificación de restaurante anónimo</h3>
+        <div id="rating-container"><p id="fechaCalificacion"></p>
+        </div> <!-- Contenedor donde aparecerán las calificaciones -->
+    </main>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
+            <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const socket = io(); // Inicializa Socket.IO para la conexión en tiempo real
+            const contadorElement = document.getElementById('contadorNotificaciones'); // Contador de notificaciones
+            const userNameElement = document.getElementById('userName'); // Nombre del recolector
+            const recolectorId = localStorage.getItem('recolector_id');
+
+            if (!recolectorId) {
+                alert('No se encontró el ID del recolector. Por favor, inicie sesión nuevamente.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Solicitar calificaciones del recolector
+            socket.emit('obtenerCalificacionesRecolector', { recolectorId });
+
+            // Escuchar el evento con las calificaciones
+            socket.on('calificacionesRecolector', (data) => {
+                const { calificaciones, nombre } = data;
+                userNameElement.textContent = nombre || "Nombre del recolector";
+
+                const totalRatings = calificaciones.length;
+                const sumRatings = calificaciones.reduce((sum, calificacion) => sum + calificacion.calificacion, 0);
+                const averageRating = (sumRatings / totalRatings).toFixed(1);
+
+                // Mostrar promedio de calificaciones
+                document.getElementById('averageRating').textContent = averageRating;
+                document.getElementById('totalRatings').textContent = `${totalRatings} calificaciones`;
+
+                // Calcular y actualizar las barras de calificación
+                const ratingCounts = {
+                    5: calificaciones.filter(c => c.calificacion === 5).length,
+                    4: calificaciones.filter(c => c.calificacion === 4).length,
+                    3: calificaciones.filter(c => c.calificacion === 3).length,
+                    2: calificaciones.filter(c => c.calificacion === 2).length,
+                    1: calificaciones.filter(c => c.calificacion === 1).length
+                };
+
+                document.getElementById('fiveStarBar').style.width = `${(ratingCounts[5] / totalRatings) * 100}%`;
+                document.getElementById('fourStarBar').style.width = `${(ratingCounts[4] / totalRatings) * 100}%`;
+                document.getElementById('threeStarBar').style.width = `${(ratingCounts[3] / totalRatings) * 100}%`;
+                document.getElementById('twoStarBar').style.width = `${(ratingCounts[2] / totalRatings) * 100}%`;
+                document.getElementById('oneStarBar').style.width = `${(ratingCounts[1] / totalRatings) * 100}%`;
+
+                document.getElementById('fiveStarCount').textContent = ratingCounts[5];
+                document.getElementById('fourStarCount').textContent = ratingCounts[4];
+                document.getElementById('threeStarCount').textContent = ratingCounts[3];
+                document.getElementById('twoStarCount').textContent = ratingCounts[2];
+                document.getElementById('oneStarCount').textContent = ratingCounts[1];
+
+                // Mostrar estrellas según el promedio
+                const starsContainer = document.getElementById('starsContainer');
+                starsContainer.innerHTML = '&#9733;'.repeat(Math.round(averageRating)) + '&#9734;'.repeat(5 - Math.round(averageRating));
+
+                // Mostrar últimas 5 calificaciones
+                const ratingContainer = document.getElementById("rating-container");
+                const ultimasCalificaciones = calificaciones.slice(0, 5);
+
+                if (ultimasCalificaciones.length > 0) {
+                    let calificacionesHTML = '';
+
+                    ultimasCalificaciones.forEach(calificacion => {
+                        const fecha = new Date(calificacion.fechaCalificacion).toLocaleDateString('es-ES');
+                        calificacionesHTML += `
+                            <div class="calificacion-card">
+                                <div class="rating">
+                                    ${'&#9733;'.repeat(calificacion.calificacion)}
+                                    ${'&#9734;'.repeat(5 - calificacion.calificacion)}
+                                </div>
+                                <p>${calificacion.comentario || ' '}</p>
+                                <p>Fecha: ${fecha}</p>
+                            </div>`;
+                    });
+
+                    ratingContainer.innerHTML = calificacionesHTML;
+                } else {
+                    ratingContainer.innerHTML = '<p>No tienes calificaciones disponibles.</p>';
+                }
+            });
+
+            // Escuchar actualizaciones del contador de notificaciones en tiempo real
+            socket.on('nuevaNotificacion', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Solicitar el contador de notificaciones al cargar la página
+            socket.emit('obtenerContadorNotificaciones');
+
+            // Escuchar el contador de notificaciones
+            socket.on('contadorNotificaciones', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Función para actualizar el contador de notificaciones
+            function actualizarContadorNotificaciones(cantidad) {
+                if (cantidad > 0) {
+                    contadorElement.textContent = cantidad;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+
+

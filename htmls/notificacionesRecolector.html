@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +15,12 @@
             <h1>Waste Tracker</h1>
         </div>
         <nav>
-            <a href="/htmls/notificacionesRecolector.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html" id="notificacionesLink">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
             <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
@@ -23,7 +28,7 @@
     <main>
         <div class="notifications">
             <h2>Notificaciones</h2>
-            <div class="notificaciones-recolector">
+            <div class="notificaciones-recolector" id="notificationsList">
                 <!-- Aquí se agregarán las notificaciones dinámicamente -->
             </div>
         </div>
@@ -38,50 +43,123 @@
         </nav>
     </footer>
 
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Cargar la biblioteca Socket.IO -->
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script> <!-- jwt-decode para obtener el usuarioId -->
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-    fetch('/notificaciones-recolector', {
-        headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.nuevaSolicitud) {
-            mostrarNotificacion(data.mensaje, data.fechaHora);
-        } else {
-            console.log('No hay nuevas solicitudes.');
-        }
+        document.addEventListener('DOMContentLoaded', async() => {
+            const socket = io();
+            // Llamada para marcar notificaciones como leídas al abrir la página
+            await fetch('/marcar-notificaciones-como-leidas', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
 
-        // Cargar notificaciones guardadas en el localStorage (si las hay)
-        const notificacionesGuardadas = JSON.parse(localStorage.getItem('notificacionesRecolector')) || [];
-        notificacionesGuardadas.forEach(notificacion => {
-            mostrarNotificacion(notificacion.mensaje, notificacion.fechaHora);
-        });
-    })
-    .catch(error => console.error('Error al cargar las notificaciones:', error));
-});
+                // Después de marcar como leídas, actualiza el contador
+                actualizarContadorNotificaciones();
 
-function mostrarNotificacion(mensaje, fechaHora) {
-    const notificationContainer = document.querySelector('.notificaciones-recolector');
-    const notificationItem = document.createElement('div');
-    notificationItem.classList.add('notification');
-    notificationItem.innerHTML = `
-        <p class="message">${mensaje}</p>
-        <div class="datetime">
-            <span class="date-time">${new Date(fechaHora).toLocaleString()}</span>
-        </div>
-    `;
-    notificationContainer.prepend(notificationItem);
+            // Extraer el token JWT desde las cookies
+            const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*\=\s*([^;]*).*$)|^.*$/, "$1");
 
-    // Limitar a las últimas 12 notificaciones
-    if (notificationContainer.children.length > 12) {
-                notificationContainer.removeChild(notificationContainer.lastChild);
+            if (!token) {
+                console.error('No se encontró el token JWT.');
+                return;
             }
-}
 
+            // Decodificar el token JWT para obtener el usuarioId
+            const decodedToken = jwt_decode(token);
+            const usuarioId = decodedToken.id;  // Asegúrate de que el token tiene el campo 'id'
+            console.log('ID del usuario autenticado:', usuarioId);
 
-    </script>        
+            socket.on('connect', () =>{
+                 // Registrar al usuario en el servidor con su usuario_id
+                socket.emit('registrarUsuario', usuarioId);
+                console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+            })
+
+            // Manejar la reconexión automática del socket
+            socket.on('connect', () => {
+                if (usuarioId) {
+                    // Re-emitir el evento para registrar al usuario nuevamente
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario reconectado con ID ${usuarioId} y socket: ${socket.id}`);
+                }
+            });
+
+            socket.on('disconnect', () => {
+                console.log(`Socket desconectado: ${socket.id}`);
+            });
+
+            const notificationList = document.getElementById('notificationsList');
+            const contadorElement = document.getElementById('contadorNotificaciones');
+            const LIMIT = 10; // Límite de notificaciones a mostrar
+
+            socket.on('notificacionUsuario', (data) => {
+                mostrarNotificacion(data.mensaje, data.fecha);
+                actualizarContadorNotificaciones();
+            });
+
+            // Función para mostrar una notificación en la lista
+            function mostrarNotificacion(mensaje, fecha) {
+                const notificationItem = document.createElement('div');
+                notificationItem.classList.add('notification');
+                notificationItem.innerHTML = `
+                    <p class="message">${mensaje}</p>
+                    <div class="datetime">
+                        <span class="date-time">${new Date(fecha).toLocaleString()}</span>
+                    </div>
+                `;
+                notificationList.prepend(notificationItem); // Insertar al principio de la lista
+            }
+
+            // Función para actualizar el contador de notificaciones no vistas
+            function actualizarContadorNotificaciones() {
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include' // Asegurarse de enviar cookies con la solicitud
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const notificacionesNoVistas = data.contador;
+                    if (notificacionesNoVistas > 0) {
+                        contadorElement.textContent = notificacionesNoVistas;
+                        contadorElement.style.display = 'inline-block';
+                    } else {
+                        contadorElement.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error al actualizar el contador de notificaciones:', error));
+            }
+
+            // Función para cargar las notificaciones existentes desde el servidor
+            function cargarNotificaciones() {
+                fetch('/notificaciones-recolector', {
+                    method: 'GET',
+                    credentials: 'include' // Asegurarse de enviar cookies con la solicitud
+                })
+                .then(response => response.json())
+                .then(notificaciones => {
+                    // Ordenar las notificaciones por fecha (más recientes primero)
+                    notificaciones.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     
+                    // Limitar la visualización a las 10 notificaciones más recientes
+                    const notificacionesLimitadas = notificaciones.slice(0, LIMIT);
+    
+                    // Vaciar la lista de notificaciones antes de volver a agregar
+                    notificationList.innerHTML = '';
+    
+                    notificacionesLimitadas.forEach((notificacion) => {
+                        mostrarNotificacion(notificacion.mensaje, notificacion.fecha);
+                    });
+                })
+                .catch(error => console.error('Error al cargar las notificaciones:', error));
+            }
+
+            // Cargar notificaciones al cargar la página
+            cargarNotificaciones();
+            actualizarContadorNotificaciones();
+        });
+    </script>
+
 </body>
 </html>

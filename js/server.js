@@ -11,12 +11,16 @@ const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');  
 const { error } = require('console');
+const http = require('http');
+const { Server } = require('socket.io');
 const app = express();
+const server = http.createServer(app);
 app.use(cors());
-
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+const jwt_decode = require('jwt-decode');
 
 // Servir archivos estáticos
-
 app.use(express.static(path.join(__dirname, '../htmls')));
 app.use(express.static(path.join(__dirname, '../images')));
 app.use(express.static(path.join(__dirname, '../styles')));
@@ -37,11 +41,19 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
+// Configurar socket.io con el servidor HTTP
+const io = new Server(server, {
+  cors: {
+    origin: '*', // Permitir conexiones desde cualquier origen
+    methods: ['GET', 'POST']
+  }
+});
 // Configuración de CORS
 const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST', 'PATCH'],
-  allowedHeaders: ['Content-Type'],
+  credentials: true
 };
 
 app.use(express.static(path.join(__dirname, '../')));
@@ -54,12 +66,6 @@ app.use(session({
   resave: true,
   saveUninitialized: true,
   cookie: { secure: true } //true si se está usando HTTPS
-}));
-
-app.use(cors({
-  origin:'http://localhost:8080', // Cambia esto al dominio de tu frontend
-  methods: ['GET', 'POST', 'PATCH'],
-  credentials: true
 }));
 
 // Configuración del cliente de conexión a la base de datos con Sequelize
@@ -211,7 +217,7 @@ const Recoleccion = sequelize.define('recolecciones', {
   },
   estado: {
     type: DataTypes.STRING,
-    defaultValue: 'pendiente',  // Estado: 'pendiente', 'en proceso', 'finalizada'
+    defaultValue: 'pendiente',  // Estado: 'pendiente', 'en proceso', 'en camino', 'llegada', 'finalizada'
     allowNull: false
   }
 }, {
@@ -246,6 +252,36 @@ const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
   tableName: 'mensajes_recoleccion',
   timestamps: false
 });
+const Notificacion = sequelize.define('notificaciones', {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  usuarios_id:{
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: Usuario,
+      key: 'id'
+    }
+  },
+  mensaje: {
+    type: DataTypes.STRING(150),
+    allowNull: false
+  },
+  leida: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  fecha: {
+    type: DataTypes.DATE,
+    defaultValue: () => new Date()
+  }
+}, {
+  tableName: 'notificaciones',
+  timestamps: false
+});
 
 // Relaciones
 // Relación entre Usuario y Restaurante
@@ -264,6 +300,10 @@ Recoleccion.belongsTo(Restaurante, { foreignKey: 'restaurantes_id' });
 Recolector.hasMany(Recoleccion, { foreignKey: 'recolectores_id' });
 Recoleccion.belongsTo(Recolector, { foreignKey: 'recolectores_id' });
 
+// Relación entre Notificacion y Usuario
+Notificacion.belongsTo(Usuario, { foreignKey: 'usuarios_id' });
+Usuario.hasMany(Notificacion, { foreignKey: 'usuarios_id' });
+
 
 // Sincronizar la base de datos
 async function sync() {
@@ -277,6 +317,63 @@ async function sync() {
   }
 }
 sync();
+
+const usuariosConectados = new Map(); 
+
+io.on('connection', (socket) => {
+  console.log('Cliente conectado:', socket.id);
+
+  //Registrar al usuario
+  socket.on('registrarUsuario', (usuarioId) => {
+    usuariosConectados.set(usuarioId, socket.id);
+    console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+  });
+
+  socket.on('nuevaNotificacion', (data) => {
+    io.emit('notificacionUsuario', data); // Emite la notificación a todos los usuarios conectados
+  });
+
+  socket.on('nuevaSolicitud', (solicitud) => {
+      io.emit('nuevaSolicitud', solicitud); // Emite la nueva solicitud para mostrarla en los mapas
+  });
+
+  // Escuchar evento del cliente para obtener el historial de recolecciones
+  socket.on('obtenerHistorialRecolecciones', async ({ restaurantesId }) => {
+    try {
+        const recolecciones = await Recoleccion.findAll({
+            where: {
+                restaurantes_id: restaurantesId,
+                estado: 'finalizada'
+            },
+            attributes: ['fecha_recoleccion'], // fecha finalización
+            include: {
+                model: Recolector,
+                include: {
+                    model: Usuario,
+                    attributes: ['nombre']
+                }
+            }
+        });
+
+        // Emitir el historial al cliente que lo solicitó
+        socket.emit('historialRecolecciones', {
+            success: true,
+            recolecciones
+        });
+    } catch (error) {
+        console.error('Error al obtener el historial de recolecciones:', error);
+        socket.emit('historialRecolecciones', {
+            success: false,
+            message: 'Error al obtener el historial de recolecciones.'
+        });
+    }
+});
+
+  // Manejar la desconexión del cliente
+  socket.on('disconnect', () => {
+    console.log('Cliente desconectado:', socket.id);
+  });
+});
 
 const TokenRevocado = sequelize.define('token_revocados', {
   token: {
@@ -299,12 +396,13 @@ function generarToken(usuario) {
   }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
 }
 
-// Middleware para verificar el token JWT
+// Middleware para verificar el token JWT desde la cookie
 function verificarToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  console.log('Token recibido:', token); // Añadido para depuración
-  if (token == null) return res.status(401).json({ error: 'Token no proporcionado' });
+  const token = req.cookies.jwt; // Obtener el token de la cookie
+
+  console.log('Token recibido desde cookie:', token); // Añadido para depuración
+
+  if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
       if (err) {
@@ -314,9 +412,9 @@ function verificarToken(req, res, next) {
           console.error('Error al verificar el token:', err);
           return res.status(403).json({ error: 'Token inválido' });
       }
-      req.user = user;
+      req.user = user; // Almacenar los datos del usuario en la solicitud
       console.log('Usuario verificado:', user); // Añadido para depuración
-      next();
+      next(); // Continuar con la solicitud
   });
 }
 
@@ -325,12 +423,13 @@ app.post('/login', async (req, res) => {
   const { correo, contrasenia } = req.body;
 
   try {
+    // Buscar el usuario en la base de datos
     let query = `SELECT * FROM usuarios WHERE correo = ?`;
     let results = await sequelize.query(query, { replacements: [correo], type: sequelize.QueryTypes.SELECT });
 
     if (results && results.length > 0) {
       const user = results[0];
-      const match = await bcrypt.compare(contrasenia, user.contrasenia);
+      const match = await bcrypt.compare(contrasenia, user.contrasenia); // Verificar contraseña
       if (!match) {
         return res.status(401).json({ error: 'Correo electrónico o contraseña incorrectos' });
       }
@@ -338,19 +437,30 @@ app.post('/login', async (req, res) => {
       const restaurante = await Restaurante.findOne({ where: { usuarios_id: user.id } });
       const recolector = await Recolector.findOne({ where: { usuarios_id: user.id } }); // Buscar recolector asociado
 
-      // Si el restaurante existe, se obtiene su dirección
-      const direccion = restaurante ? restaurante.direccion : null;
+      // Generar el token JWT
+      const token = jwt.sign({
+        id: user.id,
+        nombre: user.nombre,
+        correo: user.correo,
+        tipo_usuario: user.tipo_usuario
+      }, process.env.JWT_SECRET, { expiresIn: '1d' });  // El token expira en 1 día
 
-      const token = generarToken(user);
-      res.json({ 
-        token, 
+      // Almacenar el token en una cookie HTTP-only
+      res.cookie('jwt', token, {
+        httpOnly: false,  // La cookie no será accesible mediante JavaScript
+        secure: process.env.NODE_ENV === 'production',  // Solo en HTTPS en producción
+        maxAge: 24 * 60 * 60 * 1000  // La cookie expira en 1 día
+      });
+
+      // Respuesta con los datos del usuario (sin el token)
+      res.json({
         id: user.id,
         tipo_usuario: user.tipo_usuario,
         restaurantes_id: restaurante ? restaurante.id : null,
         recolector_id: recolector ? recolector.id : null,  // Incluir recolector_id si es recolector
         nombreRecolector: recolector ? user.nombre : null,  //nombre del recolector
-        nombreRestaurante: restaurante ? restaurante.nombre : null,  //nombre del recolector
-        direccion: direccion, //dirección del restaurante
+        nombreRestaurante: restaurante ? restaurante.nombre : null,  //nombre del restaurante
+        direccion: restaurante ? restaurante.direccion : null,  // dirección del restaurante
         fotoPerfil: user.fotoPerfil
       });
     } else {
@@ -457,12 +567,6 @@ app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
 
     const imageUrl = `../uploads/${req.file.filename}`;
     const userId = req.body.usuarios_id;
-    console.log('UserId recibido:', userId); // Verifica el valor aquí
-
-    // Asegúrate de que userId sea una cadena y no un array
-    if (Array.isArray(userId)) {
-      return res.status(400).json({ success: false, message: 'ID de usuario inválido.' });
-    }
 
     const usuario = await Usuario.findByPk(userId);
     if (!usuario) {
@@ -472,6 +576,10 @@ app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
     usuario.fotoPerfil = imageUrl;
     await usuario.save();
 
+    // Emitir la nueva URL de imagen al cliente
+    io.to(req.socketId).emit('actualizarFotoPerfil', { imageUrl });
+
+    // Respuesta en JSON para compatibilidad
     res.json({ success: true, message: 'Foto de perfil subida con éxito.', imageUrl });
   } catch (error) {
     console.error('Error al guardar la URL de la imagen en la base de datos:', error);
@@ -531,7 +639,27 @@ app.get('/api/restaurante', verificarToken, async (req, res) => {
   }
 });
 
-const notificacionesFile = path.join(__dirname, 'notificaciones.json');
+app.get('/restaurante-info', verificarToken, async (req, res) => {
+  try {
+      const usuario = await Usuario.findByPk(req.user.id, {
+          include: [{ model: Restaurante }] // Asegúrate de que la relación esté bien definida
+      });
+
+      if (!usuario || !usuario.restaurante) {
+          return res.status(404).json({ error: 'Restaurante no encontrado para este usuario' });
+      }
+
+      res.json({
+          id: usuario.restaurante.id,
+          nombre: usuario.restaurante.nombre,
+          direccion: usuario.restaurante.direccion,
+          // Otros campos que desees incluir
+      });
+  } catch (error) {
+      console.error('Error al obtener la información del restaurante:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
 
 app.get('/solicitud-actual/:restaurantes_id', async (req, res) => {
   const { restaurantes_id } = req.params;
@@ -565,71 +693,98 @@ app.get('/solicitud-actual/:restaurantes_id', async (req, res) => {
   }
 });
 
-
-app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
+app.post('/solicitar-recoleccion', verificarToken, async (req, res) => { 
   console.log("Datos recibidos en la solicitud:", req.body);
   const { direccion, restaurantes_id } = req.body;
   console.log("Dirección recibida:", direccion);
 
   try {
-    // Obtener las coordenadas de la dirección
     const coordenadas = await obtenerCoordenadas(direccion);
 
-    // Verifica si las coordenadas son válidas
     if (coordenadas.lat === null || coordenadas.lon === null) {
       console.error("Coordenadas no disponibles para la dirección proporcionada.");
       return res.status(400).json({ error: 'No se pudieron obtener coordenadas para la dirección proporcionada.' });
     }
 
-    // Mostrar las coordenadas
     console.log("Coordenadas obtenidas:", coordenadas);
 
-    // Actualizar las coordenadas en la tabla restaurantes
     await Restaurante.update(
       { latitude: coordenadas.lat, longitude: coordenadas.lon },
       { where: { id: restaurantes_id } }
     );
 
-    // Crear la solicitud de recolección con la fecha y hora actual
     const recoleccion = await Recoleccion.create({
       restaurantes_id: restaurantes_id,
-      fecha_solicitud: new Date(),  // Registra la fecha y hora de la solicitud
+      fecha_solicitud: new Date(),
       estado: 'pendiente'
     });
 
-    // Leer las notificaciones desde el archivo
-    let notificaciones = {};
-    if (fs.existsSync(notificacionesFile)) {
-      notificaciones = JSON.parse(fs.readFileSync(notificacionesFile));
-    }
+    // Notificar a los recolectores sobre la nueva solicitud
+    await notificarRecolectores();
 
-    // Crear notificación para todos los recolectores en el archivo
-    const mensajes_recolector_id = 6;  // ID del mensaje "Hay nuevas rutas!"
-    const recolectores = await Recolector.findAll();  // Obtén todos los recolectores
-
-    for (const recolector of recolectores) {
-      if (!notificaciones[recolector.id]) {
-        notificaciones[recolector.id] = [];
-      }
-      notificaciones[recolector.id].push({
-        mensajes_recoleccion_id: mensajes_recolector_id,
-        fecha_notificacion: new Date().toLocaleDateString()
-      });
-    }
-
-    // Guardar las notificaciones en el archivo
-    fs.writeFileSync(notificacionesFile, JSON.stringify(notificaciones));
-
-    // Enviar una respuesta al cliente
-    res.json({ 
-      message: "Solicitud de recolección enviada correctamente", 
-      solicitud: recoleccion  // Enviar la solicitud creada como parte de la respuesta
-    });
+    // Notificar al restaurante que su solicitud fue enviada y está pendiente
+    await notificarRestaurante(restaurantes_id);
+    io.emit('actualizarMapa', { solicitudId: recoleccion_id, estado: 'pendiente' });
+    console.log("Solicitud de recolección enviada correctamente.");
   } catch (error) {
     console.error('Error al guardar la solicitud de recolección:', error);
     res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
   }
 });
+
+// Función para notificar a los recolectores
+async function notificarRecolectores() {
+  try {
+    const recolectores = await Recolector.findAll();
+    recolectores.forEach(async (recolector) => {
+      const socketIdRecolector = usuariosConectados.get(recolector.usuarios_id);
+      const mensaje = 'Hay una nueva solicitud de recolección.';
+      
+      // Inserta la notificación en la base de datos
+      await Notificacion.create({
+        mensaje: mensaje,
+        leida: false,
+        fecha: new Date(),
+        usuarios_id: recolector.usuarios_id
+      });
+      
+      if (socketIdRecolector) {
+        io.to(socketIdRecolector).emit('notificacionUsuario', {
+          mensaje: mensaje,
+          fecha: new Date().toISOString(),
+        });
+      }
+    });
+  } catch (notificationError) {
+    console.error('Error al enviar notificaciones a recolectores:', notificationError);
+  }
+}
+
+// Función para notificar al restaurante
+async function notificarRestaurante(restaurantes_id) {
+  try {
+    const restaurante = await Restaurante.findByPk(restaurantes_id);
+    const mensaje = 'Tu solicitud de recolección ha sido enviada. Espera a que sea aceptada.';
+    
+    // Inserta la notificación en la base de datos
+    await Notificacion.create({
+      mensaje: mensaje,
+      leida: false,
+      fecha: new Date(),
+      usuarios_id: restaurante.usuarios_id // Asegúrate de que este campo sea correcto
+    });
+
+    const socketIdRestaurante = usuariosConectados.get(restaurante.usuarios_id);
+    if (socketIdRestaurante) {
+      io.to(socketIdRestaurante).emit('notificacionUsuario', {
+        mensaje: mensaje,
+        fecha: new Date().toISOString(),
+      });
+    }
+  } catch (notificationError) {
+    console.error('Error al enviar notificación al restaurante:', notificationError);
+  }
+}
 
 // Ruta para obtener solicitudes de recolección pendientes
 app.get('/solicitudes-pendientes', async (req, res) => {
@@ -674,6 +829,7 @@ async function verificarRecolector(req, res, next) {
 
 // Ruta para aceptar recolecciones
 app.post('/aceptar-recolecciones', verificarToken, verificarRecolector, async (req, res) => {
+
   const { recoleccion_id } = req.body;
 
   // Verificar que el recoleccion_id esté presente
@@ -705,12 +861,89 @@ app.post('/aceptar-recolecciones', verificarToken, verificarRecolector, async (r
           recolectores_id: recolectorId
       });
 
+      // Función para obtener el usuarioId asociado a un restauranteId
+      async function obtenerUsuarioIdDeRestaurante(restauranteId) {
+        try {
+          const restaurante = await Restaurante.findOne({
+            where: { id: restauranteId },
+            attributes: ['usuarios_id'] // Asegura que esta columna exista en tu modelo
+          });
+
+          return restaurante ? restaurante.usuarios_id : null;
+        } catch (error) {
+          console.error('Error al obtener usuarioId de restaurante:', error);
+          throw error;
+        }
+      }
+
+      // Función para obtener el usuarioId asociado a un recolectorId
+      async function obtenerUsuarioIdDeRecolector(recolectorId) {
+        try {
+          const recolector = await Recolector.findOne({
+            where: { id: recolectorId },
+            attributes: ['usuarios_id'] // Asegura que esta columna exista en tu modelo
+          });
+
+          return recolector ? recolector.usuarios_id : null;
+        } catch (error) {
+          console.error('Error al obtener usuarioId de recolector:', error);
+          throw error;
+        }
+      }
+
+      // Enviar notificaciones
+      const restauranteId = recoleccion.restaurantes_id;
+      const usuarioIdRestaurante = await obtenerUsuarioIdDeRestaurante(restauranteId);
+      const usuarioIdRecolector = await obtenerUsuarioIdDeRecolector(recolectorId);
+
+      // Enviar notificación al restaurante
+      await enviarNotificacion(usuarioIdRestaurante, 'Tu solicitud ha sido aceptada');
+
+      // Enviar notificación al recolector
+      await enviarNotificacion(usuarioIdRecolector, 'Muy bien! Has aceptado recolectar');
+
+      // Emitir notificaciones en tiempo real con Socket.IO
+      io.emit('enviarNotificacion', {
+          usuarioId: usuarioIdRestaurante,
+          mensaje: "Tu solicitud ha sido aceptada",
+          fecha: new Date().toISOString()
+      });
+
+      io.emit('enviarNotificacion', {
+          usuarioId: usuarioIdRecolector,
+          mensaje: "Muy bien! Has aceptado recolectar",
+          fecha: new Date().toISOString()
+      });
+      io.emit('actualizarMapa', { solicitudId: req.body.recoleccion_id, estado: 'en proceso' });
       res.json({ message: 'Solicitud aceptada y ahora está en proceso' });
   } catch (error) {
       console.error('Error al aceptar la recolección:', error);
       res.status(500).json({ error: 'Error al aceptar la recolección' });
   }
 });
+
+async function enviarNotificacion(usuarioId, mensaje) {
+  try {
+    // Inserta la notificación en la base de datos
+    await Notificacion.create({
+      mensaje: mensaje,
+      leida: false,
+      fecha: new Date(),
+      usuarios_id: usuarioId
+    });
+
+    // Obtener el ID del socket del usuario conectado
+    const socketIdUsuario = usuariosConectados.get(usuarioId);
+    if (socketIdUsuario) {
+      io.to(socketIdUsuario).emit('notificacionUsuario', {
+        mensaje: mensaje,
+        fecha: new Date().toISOString(),
+      });
+    }
+  } catch (notificationError) {
+    console.error('Error al enviar notificación:', notificationError);
+  }
+}
 
 // Ruta solicitudes aceptadas por el recolector
 app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (req, res) => {
@@ -748,29 +981,110 @@ app.get('/solicitudes-aceptadas', verificarToken, verificarRecolector, async (re
 // Endpoint para actualizar el estado de una solicitud
 app.patch('/update-status/:id', verificarToken, async (req, res) => {
   const { id } = req.params;
-  const { status, fechaFinalizacion } = req.body; // Obtenemos 'fechaFinalizacion' del body
+  const { status, eta } = req.body; // Recibe la ETA si está disponible
+  let mensajeRestaurante;
 
   try {
-      const recoleccion = await Recoleccion.findByPk(id);
+    const recoleccion = await Recoleccion.findByPk(id);
 
-      if (!recoleccion) {
-          return res.status(404).json({ error: 'Recolección no encontrada' });
+    if (!recoleccion) {
+      return res.status(404).json({ error: 'Recolección no encontrada' });
+    }
+
+    // Actualizar el estado de la recolección
+    recoleccion.estado = status;
+
+    // Si el estado es "finalizada", registrar la hora actual en fecha_recoleccion
+    if (status === 'finalizada') {
+      recoleccion.fecha_recoleccion = new Date(); // Registra la fecha y hora de finalización
+    }
+
+    await recoleccion.save();
+
+    // Función para obtener el usuarioId asociado a un restauranteId
+    async function obtenerUsuarioIdDeRestaurante(restauranteId) {
+      const restaurante = await Restaurante.findOne({
+        where: { id: restauranteId },
+        attributes: ['usuarios_id']
+      });
+      return restaurante ? restaurante.usuarios_id : null;
+    }
+
+    // Función para obtener el usuarioId asociado a un recolectorId
+    async function obtenerUsuarioIdDeRecolector(recolectorId) {
+      const recolector = await Recolector.findOne({
+        where: { id: recolectorId },
+        attributes: ['usuarios_id']
+      });
+      return recolector ? recolector.usuarios_id : null;
+    }
+
+    // Obtener los IDs de usuario del recolector y del restaurante
+    const usuarioIdRestaurante = await obtenerUsuarioIdDeRestaurante(recoleccion.restaurantes_id);
+    const usuarioIdRecolector = await obtenerUsuarioIdDeRecolector(recoleccion.recolectores_id);
+
+    // Configura los mensajes de notificación para cada estado
+    const mensajesNotificacion = {
+      'pendiente': {
+        recolector: 'Se ha cancelado una recolección',
+        restaurante: 'Tu solicitud ha sido cancelada, espera a que otro recolector la acepte'
+      },
+      'en camino': {
+        recolector: 'Vas en camino a la recolección, suerte en tu viaje!',
+        restaurante: `El recolector está en camino, hora estimada de llegada: ${eta}`
+      },
+      'llegada': {
+        recolector: 'Llegaste al destino de recolección, asegúrate de brindar un buen servicio',
+        restaurante: 'El recolector ha llegado a tu restaurante!'
+      },
+      'finalizada': {
+        recolector: 'Recolección finalizada con éxito',
+        restaurante: 'La recolección ha sido completada, ya puedes calificar el servicio'
       }
+    };
 
-      // Actualizar el estado y la fecha de recolección (finalización)
-      recoleccion.estado = status;
-      if (status === 'finalizada' && fechaFinalizacion) {
-          recoleccion.fecha_recoleccion = fechaFinalizacion; // Almacena la fecha de finalización en 'fecha_recoleccion'
-      }
-      await recoleccion.save();
+    // Envía notificación al recolector
+    if (usuarioIdRecolector) {
+      await enviarNotificacion(usuarioIdRecolector, mensajesNotificacion[status].recolector);
+    }
 
-      res.json({ success: true });
+    // Envía notificación al restaurante
+    if (usuarioIdRestaurante) {
+      mensajeRestaurante = mensajesNotificacion[status].restaurante;
+      await enviarNotificacion(usuarioIdRestaurante, mensajeRestaurante);
+    }
+
+    // Emitir evento para actualizar el mapa en tiempo real
+    io.emit('actualizarMapa', { solicitudId: id, estado: status, eta });
+    
+    res.json({ success: true });
   } catch (error) {
-      console.error('Error al actualizar el estado:', error);
-      res.status(500).json({ error: 'Error al actualizar el estado' });
+    console.error('Error al actualizar el estado:', error);
+    res.status(500).json({ error: 'Error al actualizar el estado' });
   }
 });
 
+// Función para enviar notificación al usuario específico
+async function enviarNotificacion(usuarioId, mensaje) {
+  try {
+    await Notificacion.create({
+      mensaje: mensaje,
+      leida: false,
+      fecha: new Date(),
+      usuarios_id: usuarioId
+    });
+
+    const socketIdUsuario = usuariosConectados.get(usuarioId);
+    if (socketIdUsuario) {
+      io.to(socketIdUsuario).emit('notificacionUsuario', {
+        mensaje: mensaje,
+        fecha: new Date().toISOString()
+      });
+    }
+  } catch (notificationError) {
+    console.error('Error al enviar notificación:', notificationError);
+  }
+}
 
 app.get('/historial-recolecciones/:restaurantesId', async (req, res) => {
   const { restaurantesId } = req.params;
@@ -805,7 +1119,7 @@ app.get('/historial-recolecciones/:restaurantesId', async (req, res) => {
 });
 
 // Endpoint para obtener la última recolección finalizada
-app.get('/recolecciones/ultima-finalizada/:restauranteId', verificarToken, async (req, res) => {
+/*app.get('/recolecciones/ultima-finalizada/:restauranteId', verificarToken, async (req, res) => {
   const { restauranteId } = req.params;
 
   try {
@@ -837,6 +1151,43 @@ app.get('/recolecciones/ultima-finalizada/:restauranteId', verificarToken, async
     console.error('Error al obtener la última recolección finalizada:', error);
     res.status(500).json({ error: 'Error al obtener la última recolección finalizada' });
   }
+});*/
+
+// Evento para obtener la última recolección sin calificar
+io.on('connection', (socket) => {
+  socket.on('obtenerUltimaRecoleccionSinCalificar', async ({ restauranteId }) => {
+    try {
+      const recoleccion = await Recoleccion.findOne({
+        where: {
+          restaurantes_id: restauranteId,
+          estado: 'finalizada',
+          calificacion: null // Filtrar por recolecciones sin calificación
+        },
+        order: [['fecha_solicitud', 'DESC']],
+        include: [
+          {
+            model: Recolector,
+            attributes: ['id'],
+            include: [{
+              model: Usuario,
+              attributes: ['nombre']
+            }]
+          }
+        ]
+      });
+
+      if (!recoleccion) {
+        // Emitir un mensaje de que no hay recolecciones sin calificar
+        socket.emit('ultimaRecoleccionSinCalificar', { message: 'No hay recolecciones finalizadas sin calificar' });
+      } else {
+        // Emitir la última recolección sin calificar
+        socket.emit('ultimaRecoleccionSinCalificar', { recoleccion });
+      }
+    } catch (error) {
+      console.error('Error al obtener la última recolección finalizada:', error);
+      socket.emit('error', { message: 'Error al obtener la última recolección finalizada' });
+    }
+  });
 });
 
 //Recolecciones finalizadas del recolector
@@ -864,51 +1215,81 @@ app.get('/recolecciones-finalizadas', async(req, res) =>{
 });
 
 //Recolecciones finalizadas del restaurante
-app.get('/recolecciones-finalizadas-restaurante', async(req, res) =>{
+app.get('/recolecciones-finalizadas-restaurante', async (req, res) => {
   const { restauranteId } = req.query;
 
-  if(!restauranteId){
-    return res.status(400).json({error: 'ID del recolector es requerido'});
+  if (!restauranteId) {
+    return res.status(400).json({ error: 'ID del restaurante es requerido' });
   }
 
-  try{
-    //contar recolecciones con estado finalizada
+  try {
     const recoleccionesFinalizadas = await Recoleccion.count({
       where: {
-          restaurantes_id: restauranteId, //ID del recolector
-          estado: 'finalizada'
+        restaurantes_id: restauranteId,
+        estado: 'finalizada'
       }
     });
 
+    // Emitir el número de recolecciones al cliente que hizo la solicitud
+    io.to(req.socketId).emit('recoleccionesFinalizadas', { recoleccionesFinalizadas });
+
+    // Respuesta original para compatibilidad
     res.json({ recoleccionesFinalizadas });
-  }catch(error){
+  } catch (error) {
     console.error('Error al obtener las recolecciones finalizadas:', error);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
-// Ruta para obtener las notificaciones del recolector si hay solicitudes de recolección pendientes
-app.get('/notificaciones-recolector', verificarToken, verificarRecolector, async (req, res) => {
+
+//contador de notificaciones no leidas(campana)
+app.get('/notificaciones-no-leidas', verificarToken, async (req, res) => {
   try {
-    // Verificar si hay alguna solicitud pendiente para el recolector
-    const solicitudesPendientes = await Recoleccion.findAll({
-      where: { estado: 'pendiente' },
-      order: [['fecha_solicitud', 'DESC']]
+    const usuarioId = req.user.id;  // Obtener el ID del usuario autenticado
+
+    // Buscar las notificaciones no leídas para el usuario
+    const notificacionesNoLeidas = await Notificacion.count({
+      where: {
+        usuarios_id: usuarioId,
+        leida: false  // Solo las no leídas
+      }
     });
 
-    // Si hay solicitudes pendientes, enviar el mensaje con id = 6
-    if (solicitudesPendientes.length > 0) {
-      const mensaje = await MensajeRecoleccion.findByPk(6);
-      res.json({
-        nuevaSolicitud: true,
-        mensaje: mensaje.texto,
-        fechaHora: new Date().toISOString()
-      });
-    } else {
-      res.json({ nuevaSolicitud: false });
-    }
+    // Enviar la cantidad de notificaciones no leídas como respuesta
+    res.json({ cantidad: notificacionesNoLeidas });
   } catch (error) {
-    console.error('Error al obtener las notificaciones:', error);
-    res.status(500).json({ error: 'Error al obtener las notificaciones' });
+    console.error('Error al obtener las notificaciones no leídas:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para marcar notificaciones como leídas
+app.post('/marcar-notificaciones-como-leidas', verificarToken, async (req, res) => {
+  try {
+      const usuarioId = req.user.id;
+      await Notificacion.update({ leida: true }, { where: { usuarios_id: usuarioId, leida: false } });
+      res.json({ success: true });
+  } catch (error) {
+      console.error('Error al marcar las notificaciones como leídas:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Endpoint para obtener las notificaciones del recolector
+app.get('/notificaciones-recolector', verificarToken, async (req, res) => {
+  try {
+    const usuarioId = req.user.id;  // Obtener el ID del usuario autenticado (el recolector)
+
+    // Buscar las notificaciones del recolector ordenadas por fecha
+    const notificaciones = await Notificacion.findAll({
+      where: { usuarios_id: usuarioId },  // Filtrar por el ID del usuario
+      order: [['fecha', 'DESC']]  // Ordenar por fecha de manera descendente
+    });
+
+    // Enviar las notificaciones como respuesta
+    res.json(notificaciones);
+  } catch (error) {
+    console.error('Error al obtener las notificaciones del recolector:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -1007,6 +1388,25 @@ app.get('/mensaje-recoleccion/:id', async (req, res) => {
   }
 });
 
+// Endpoint para obtener las notificaciones del restaurante
+app.get('/notificaciones-restaurante', verificarToken, async (req, res) => {
+  try {
+    const usuarioId = req.user.id;  // Obtener el ID del usuario autenticado
+
+    // Buscar las notificaciones del usuario (restaurante) ordenadas por fecha
+    const notificaciones = await Notificacion.findAll({
+      where: { usuarios_id: usuarioId },  // Filtrar por el ID del usuario
+      order: [['fecha', 'DESC']]  // Ordenar por fecha de manera descendente
+    });
+
+    // Enviar las notificaciones como respuesta
+    res.json(notificaciones);
+  } catch (error) {
+    console.error('Error al obtener las notificaciones del restaurante:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 app.get('/notificacion-consejo', async (req, res) => {
   try {
     const [consejo] = await sequelize.query(
@@ -1035,17 +1435,16 @@ app.get('/usuarios', async (req, res) => {
   }
 });
 
-// Ruta para cerrar sesión
+// Ruta para cerrar sesión (logout)
 app.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Error al destruir la sesión:', err);
-      return res.status(500).json({ error: 'Error al cerrar sesión' });
-    }
-    res.redirect('/'); // Redirige al usuario a la página de login u otra página
+  // Eliminar la cookie 'jwt' estableciendo una expiración en el pasado
+  res.clearCookie('jwt', {
+    httpOnly: true,  // Para mayor seguridad, aseguramos que la cookie es HTTP-only
+    secure: process.env.NODE_ENV === 'production'  // Aseguramos que solo se use en producción con HTTPS
   });
+  res.redirect('/');
 });
 
-app.listen(process.env.PORT_SERVER, function () {
+server.listen(process.env.PORT_SERVER, function () {//se cambio app.listen por server.listen para que socket y express se conecten al mismo puerto
   console.log("Servidor en el puerto " + process.env.PORT_SERVER);
 });

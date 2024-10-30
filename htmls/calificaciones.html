@@ -4,49 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../styles/calificaciones.css">
-    <title>Calificaciones</title>
+    <title>Calificar Servicio</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificaciones.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span> <!-- Contador de notificaciones -->
+                </a>
+            </div>
+            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
+            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+    <h2>Calificar servicio</h2>
+    <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
+    <div id="rating-container"></div>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+
     <script>
-        document.addEventListener("DOMContentLoaded", async () => {
-            const authToken = localStorage.getItem('token'); // Obtener el token JWT del localStorage
-            const restauranteId = localStorage.getItem('restaurantes_id'); // Obtener el ID del restaurante del localStorage
+        const socket = io();
+        const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+
+        if (!token) {
+            console.error('No se encontró el token JWT.');
+        }
+
+        const decodedToken = jwt_decode(token);
+        const usuarioId = decodedToken.id;
+        console.log('ID del usuario autenticado:', usuarioId);
+
+        socket.on('connect', () => {
+            socket.emit('registrarUsuario', usuarioId);
+            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+        });
+
+        socket.on('disconnect', () => {
+            console.log(`Socket desconectado: ${socket.id}`);
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const contadorElement = document.getElementById('contadorNotificaciones');
 
             function mostrarMensajeTemporal(mensaje, duracion) {
                 const mensajeTemporal = document.getElementById('mensajeTemporal');
                 mensajeTemporal.textContent = mensaje;
                 mensajeTemporal.style.display = 'block';
 
-                // Ocultar el mensaje después de la duración especificada
                 setTimeout(() => {
                     mensajeTemporal.style.display = 'none';
                 }, duracion);
             }
-            if (!restauranteId) {
-                alert('Error: No se pudo obtener el ID del restaurante.');
-                return;
-            }
 
-            try {
-                // Realiza la solicitud al servidor para obtener la última recolección sin calificar
-                const response = await fetch(`/recolecciones/ultima-finalizada/${restauranteId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`, // Envía el token en el encabezado
-                        'Content-Type': 'application/json'
-                    }
-                });
+            // Emitir evento para obtener la última recolección sin calificar
+            const restauranteId = "RESTAURANTE_ID_AQUI";  // Reemplaza con el ID correcto
+            socket.emit('obtenerUltimaRecoleccionSinCalificar', { restauranteId });
 
-                const contentType = response.headers.get('Content-Type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Respuesta del servidor no es JSON');
-                }
-
-                const data = await response.json();
+            // Escuchar la respuesta con la última recolección sin calificar
+            socket.on('ultimaRecoleccionSinCalificar', (data) => {
                 const ratingContainer = document.getElementById("rating-container");
 
-                if (response.ok && data.recoleccion) {
+                if (data.recoleccion) {
                     const recoleccion = data.recoleccion;
-
-                    console.log('Última recolección:', recoleccion);
 
                     const calificacionHTML = `
                         <div class="rating-card">
@@ -60,11 +87,10 @@
                                 <span class="star" data-value="4">&#9733;</span>
                                 <span class="star" data-value="5">&#9733;</span>
                             </div>
-                            <textarea class="comment-box" placeholder="Escribe un comentario del por qué de tu calificación" rows="4"></textarea><br>
+                            <textarea class="comment-box" placeholder="Escribe un comentario" rows="4"></textarea><br>
                             <button class="submitRating" data-recoleccion-id="${recoleccion.id}">Enviar calificación</button>
                         </div>
                     `;
-
                     ratingContainer.innerHTML = calificacionHTML;
 
                     document.querySelectorAll('.star').forEach(star => {
@@ -79,82 +105,48 @@
                         });
                     });
 
-                    document.querySelector('.submitRating').addEventListener('click', async (event) => {
-                        const recoleccionId = event.target.getAttribute('data-recoleccion-id');
+                    document.querySelector('.submitRating').addEventListener('click', () => {
                         const ratingElement = document.querySelector('.rating');
                         const ratingValue = ratingElement.getAttribute('data-selected-rating');
                         const commentValue = document.querySelector('.comment-box').value;
-                        // Captura la fecha actual en formato ISO
-                        let fechaCalificacion = new Date().toISOString();
-                                // Guardar la fecha en localStorage
-                                localStorage.setItem('fecha_calificacion', fechaCalificacion);
 
-                        if (!recoleccionId || ratingValue === '0') {
+                        if (ratingValue === '0') {
                             alert('Por favor selecciona una calificación antes de enviar.');
                             return;
                         }
 
-                        try {
-                            const res = await fetch(`/calificar/${recoleccionId}`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${authToken}`
-                                },
-                                body: JSON.stringify({ 
-                                    calificacion: parseInt(ratingValue, 10),
-                                    comentario: commentValue,
-                                    fechaCalificacion: fechaCalificacion
-                                })
-                            });
-
-                            const result = await res.json();
-                            if (res.ok) {
-                                mostrarMensajeTemporal('Calificación enviada!', 3000);
-                                
-                                // Deshabilitar el botón de calificación después de enviar la calificación
-                                const submitButton = document.querySelector('.submitRating');
-                                submitButton.disabled = true;
-                                submitButton.textContent = 'Calificación enviada';
-                                
-                                // Alternativa: Mostrar un mensaje cuando no hay más calificaciones
-                                ratingContainer.innerHTML = `<p>No hay más recolecciones por calificar.</p>`;
-                            } else {
-                                alert('Error al guardar la calificación');
-                            }
-                        } catch (error) {
-                            console.error('Error al enviar la calificación:', error);
-                            alert('Error al enviar la calificación');
-                        }
+                        socket.emit('enviarCalificacion', {
+                            recoleccionId: recoleccion.id,
+                            calificacion: parseInt(ratingValue, 10),
+                            comentario: commentValue
+                        });
                     });
-
-                } else {
-                    // Mostrar un mensaje si no hay recolecciones por calificar
-                    ratingContainer.innerHTML = `<p>No hay recolecciones pendientes para calificar.</p>`;
+                } else if (data.message) {
+                    ratingContainer.innerHTML = `<p>${data.message}</p>`;
                 }
+            });
 
-            } catch (error) {
-                console.error('Error al cargar la última recolección:', error);
-                alert('Error al cargar la última recolección.');
+            socket.on('calificacionEnviada', () => {
+                mostrarMensajeTemporal('¡Calificación enviada exitosamente!', 3000);
+                document.getElementById("rating-container").innerHTML = `<p>No hay más recolecciones por calificar.</p>`;
+            });
+
+            function actualizarContadorNotificaciones() {
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+                    contadorElement.textContent = numNotificaciones > 0 ? numNotificaciones : '';
+                    contadorElement.style.display = numNotificaciones > 0 ? 'inline-block' : 'none';
+                });
             }
+
+            actualizarContadorNotificaciones();
         });
     </script>
-</head>
-<body>
-    <header>
-        <div class="logo">
-            <a href="/htmls/inicioRestaurante.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
-            <h1>Waste Tracker</h1>
-        </div>
-        <nav>
-            <a href="/htmls/notificaciones.html"><img src="../images/notificaciones.png" alt="Notificaciones"></a>
-            <a href="/htmls/historial.html"><img src="../images/historial-icon.png" alt="Historial"></a>
-            <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
-        </nav>
-    </header>
-    <h2>Calificar servicio</h2>
-    <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
-    <div id="rating-container"></div>
     <footer>
         <nav class="footer-nav">
             <a href="/htmls/inicioRestaurante.html"><img src="../images/home-icon.png" alt="Inicio"></a>
@@ -164,4 +156,3 @@
     </footer>
 </body>
 </html>
-
