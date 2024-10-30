@@ -109,7 +109,7 @@
                         <span class="date-time">${new Date(fecha).toLocaleString()}</span>
                     </div>
                 `;
-                notificationList.prepend(notificationItem); // Insertar al principio de la lista
+                notificationList.appendChild(notificationItem); // Insertar al principio de la lista
             }
 
             // Función para actualizar el contador de notificaciones no vistas
