@@ -238,20 +238,7 @@ const NotificacionConsejo = sequelize.define('notificaciones_consejos', {
   tableName: 'notificaciones_consejos',
   timestamps: false
 });
-const MensajeRecoleccion = sequelize.define('mensajes_recoleccion', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  texto: {
-    type: DataTypes.STRING(150),
-    allowNull: false
-  }
-}, {
-  tableName: 'mensajes_recoleccion',
-  timestamps: false
-});
+
 const Notificacion = sequelize.define('notificaciones', {
   id: {
     type: DataTypes.INTEGER,
