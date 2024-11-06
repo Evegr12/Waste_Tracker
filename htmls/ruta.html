@@ -100,8 +100,12 @@
         // Función para actualizar el contenido del popup
         function actualizarPopup(marker, solicitudId, estado, eta){
             let popupContent = `
-                <p><b>Estado:</b> ${estado}</p>
-                ${eta ? `<p><b>ETA:</b> ${eta}</p>` : ''}
+                <p class="data-restaurante">
+                    <b>Restaurante:</b> ${request.restaurante.nombre}<br>
+                    <b>Dirección:</b> ${request.restaurante.direccion}
+                </p>
+                <p class="data-restaurante"><b>Estado:</b> ${estado}</p>
+                ${eta ? `<p class="data-restaurante"><b>ETA:</b> ${eta}</p>` : ''}
             `;
             if (estado === 'en camino') {
                 popupContent += `
