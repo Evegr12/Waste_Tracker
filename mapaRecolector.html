@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapa de Solicitudes de Recolección</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="../styles/mapa.css">
+    <style>
+        #map {
+            height: 900px;
+            width: 100%;
+        }
+        .popup-buttons {
+            margin-top: 10px;
+        }
+        .accepted-popup {
+            background-color: lightgreen;
+            font-weight: bold;
+        }
+        .mensaje-emergente {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745; /* Verde para éxito */
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            display: none; /* Oculto por defecto */
+            z-index: 1000;
+            font-size: 1.2em;
+        }
+        .mensaje-error {
+            background-color: #dc3545; /* Rojo para error */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <center><h1>Solicitudes de Recolección</h1></center>
+
+    <div id="map"></div>
+    <!-- Contenedor para los mensajes emergentes -->
+    <div id="mensajeEmergente" class="mensaje-emergente"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.offline@1.0.0/leaflet.offline.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Integración de Socket.IO -->
+
+    <script>
+        const socket = io();
+        const map = L.map('map').setView([19.4326, -99.1332], 12); // Centra el mapa en CDMX
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Iconos para diferentes estados
+        const iconPending = L.icon({
+            iconUrl: '../images/marker-icon-red.png',
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        const iconAccepted = L.icon({
+            iconUrl: '../images/marker-icon-purple.png',
+            iconSize: [75, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        const iconOnTheWay = L.icon({
+            iconUrl: '../images/marker-icon-blue.png',
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        const iconArrived = L.icon({
+            iconUrl: '../images/marker-icon-yellow.png',
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        const iconCompleted = L.icon({
+            iconUrl: '../images/marker-icon-green.png',
+            iconSize: [85, 41],
+            iconAnchor: [42, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        const markers = {};
+
+        // Obtener solicitudes pendientes
+        fetch('/solicitudes-pendientes', {
+            method: 'GET',
+            credentials: 'include'  // Asegurarse de enviar cookies con la solicitud
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (Array.isArray(data)) {
+                data.forEach(request => {
+                    if (request.restaurante.latitude && request.restaurante.longitude) {
+                        const popupContent = `
+                            <p class="data-restaurante"><b>Restaurante:</b> ${request.restaurante.nombre}<br> <b>Dirección:</b> ${request.restaurante.direccion}</p>
+                            <div class="popup-buttons">
+                                <button class="aceptar-recoleccion" onclick="confirmarAceptacion(${request.id})">Aceptar</button>
+                            </div>
+                        `;
+                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
+                            .addTo(map)
+                            .bindPopup(popupContent);
+                        markers[request.id] = { marker, accepted: false };
+                    }
+                });
+            } else {
+                console.error('Error: La respuesta no es un arreglo', data);
+            }
+        })
+        .catch(error => console.error('Error fetching requests:', error));
+
+        // Actualizar el contador de notificaciones en tiempo real
+        socket.on('notificacionUsuario', (data) => {
+            mostrarMensajeEmergente(data.mensaje);
+            actualizarContadorNotificaciones();
+        });
+
+        async function confirmarAceptacion(id) {
+            try {
+                const response = await fetch('/aceptar-recolecciones', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',  // Asegurarse de enviar cookies con la solicitud
+                    body: JSON.stringify({ recoleccion_id: id })
+                });
+
+                const data = await response.json();
+
+                if (data.message) {
+                    if (markers[id]) {
+                        markers[id].marker.setIcon(iconAccepted);
+                        markers[id].accepted = true;
+
+                        const popup = markers[id].marker.getPopup();
+                        popup.setContent(`<div class="accepted-popup"><b class="sol-aceptada">Solicitud aceptada</b></div>`);
+                        markers[id].marker.bindPopup(popup);
+
+                        // Mostrar mensaje emergente al recolector
+                        mostrarMensajeEmergente('Solicitud aceptada correctamente.');
+
+                        // Enviar mensaje de notificación con Socket.IO al restaurante
+                        socket.emit('actualizarEstadoRecoleccion', {
+                            usuarioId: usuarioIdRestaurante,
+                            solicitudId: id,
+                            estado: 'en proceso',
+                            fecha: new Date().toISOString()
+                        });
+
+                        // Enviar mensaje de notificación con Socket.IO al recolector
+                        socket.emit('actualizarEstadoRecoleccion', {
+                            usuarioId: usuarioIdRecolector,
+                            solicitudId: id,
+                            estado: 'en proceso',
+                            fecha: new Date().toISOString()
+                        });
+                    }
+                } else {
+                    mostrarMensajeEmergente('Error al aceptar las recolecciones.', 'error');
+                }
+            } catch (error) {
+                console.error('Error al aceptar la recolección:', error);
+                mostrarMensajeEmergente('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.', 'error');
+            }
+        }
+
+        // Función para mostrar mensaje emergente
+        function mostrarMensajeEmergente(mensaje, tipo = 'exito') {
+            const mensajeEmergente = document.getElementById('mensajeEmergente');
+            mensajeEmergente.textContent = mensaje;
+
+            if (tipo === 'error') {
+                mensajeEmergente.classList.add('mensaje-error');
+            } else {
+                mensajeEmergente.classList.remove('mensaje-error');
+            }
+
+            mensajeEmergente.style.display = 'block';
+
+            // Desaparece automáticamente después de 3 segundos
+            setTimeout(() => {
+                mensajeEmergente.style.display = 'none';
+            }, 3000);
+        }
+
+        // Actualizar contador de notificaciones
+        function actualizarContadorNotificaciones() {
+            let contador = parseInt(document.getElementById('contadorNotificaciones').textContent) || 0;
+            contador += 1;  // Incrementar contador por cada notificación recibida
+            document.getElementById('contadorNotificaciones').textContent = contador;
+            document.getElementById('contadorNotificaciones').style.display = 'inline-block';
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/contador-notificaciones', {
+                    method: 'GET',
+                    credentials: 'include'  // Asegurarse de enviar cookies con la solicitud
+                });
+                const { contador } = await response.json();
+                const contadorElement = document.getElementById('contadorNotificaciones');
+                
+                if (contador > 0) {
+                    contadorElement.textContent = contador;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error al actualizar el contador de notificaciones:', error);
+            }
+        });
+    </script>
+    
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
+            <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+</body>
+</html>

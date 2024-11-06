@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/stylesperfilRes.css">
+    <title>Perfil Recolector</title>
+</head>
+<body>
+    <style>
+        /*Notificaciones*/
+        /* Estilo para el contador de notificaciones en la campana */
+        .campana-notificaciones {
+            position: relative;
+        }
+
+        .badge {
+            background-color: red;
+            color: white;
+            border-radius: 100%;
+            padding: 5px 10px;
+            font-size: 14px;
+            position: absolute;
+            top: -10px;
+            right: 33px;
+            display: inline-block;
+        }
+    </style>
+
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="header">
+            <h2>Mi perfil</h2>
+        </div>
+        <div class="restaurant-info">
+            <label for="profileImageUpload">
+                <img src="../images/kingfish.png" alt="foto-perfil" id="foto-perfil">
+            </label>
+            <input type="file" id="cargar-foto-perfil-rec" style="display: none;" accept="image/*">
+            <a href="#"><img src="../images/camara.png" alt="actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil-rec').click();"></a><br><br>
+            <!-- Contenedor para el mensaje temporal -->
+            <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
+            <br><div class="recolector-name">Recolector</div>
+        </div>
+
+        <!--N° recolecciones finalizadas-->
+        <div class="collection-info">
+            <span>0</span> Recolecciones
+        </div>
+
+        <!--Botón cerrar sesión-->
+        <button class="logout-button" id="logoutButton">Cerrar sesión</button>
+        <!-- Formulario para cerrar sesión -->
+        <form id="logoutForm" action="/logout" method="POST" style="display:none;">
+        </form>
+    </div>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
+            <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificaciones"></a>
+        </nav>
+    </footer>
+
+    <!-- JavaScript para la foto de perfil -->
+    <script>
+         // Obtener el nombre del recolector y mostrarlo
+        const nombreRecolector = localStorage.getItem('recolector_nombre');
+        const userId = localStorage.getItem('usuarios_id');
+        if (nombreRecolector) {
+            document.querySelector('.recolector-name').textContent = nombreRecolector;
+        }
+
+        // Función para mostrar el mensaje temporal
+        function mostrarMensajeTemporal(mensaje, duracion) {
+                const mensajeTemporal = document.getElementById('mensajeTemporal');
+                mensajeTemporal.textContent = mensaje;
+                mensajeTemporal.style.display = 'block';
+
+                // Ocultar el mensaje después de la duración especificada
+                setTimeout(() => {
+                    mensajeTemporal.style.display = 'none';
+                }, duracion);
+            }
+
+        const cargarFotoPerfil = document.getElementById('cargar-foto-perfil-rec');
+            cargarFotoPerfil.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    // Verifica que el archivo sea una imagen
+                    if (file.type.startsWith('image/')) {
+                        if (file.size > 2 * 1024 * 1024) { // Limite de 2MB
+                            alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const fotoPerfil = document.getElementById('foto-perfil');
+                            fotoPerfil.setAttribute('src', event.target.result); // Muestra la vista previa
+                        };
+                        reader.readAsDataURL(file);
+
+                        //Enviar la imagen al servidor
+                        const formData = new FormData();
+                        formData.append('fotoPerfil', file); // Nombre del input en el formulario
+
+
+                        formData.append('usuarios_id', userId);
+                        fetch('/upload-photo', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Mostrar el mensaje temporal
+                                mostrarMensajeTemporal('Foto de perfil actualizada', 3000);
+                                // Actualizar la URL de la foto de perfil en la tabla usuario con la URL del servidor
+                                document.getElementById('foto-perfil').src = data.imageUrl;
+                                // Guardar la URL de la foto de perfil en localStorage
+                                localStorage.setItem('foto_perfil_rec', data.imageUrl);
+                            } else {
+                                alert('Error al subir la foto de perfil.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error al enviar la imagen:', error);
+                        });
+                    } else {
+                        alert('El archivo seleccionado no es una imagen válida.');
+                    }
+                }
+            });
+
+            // Mostrar la imagen guardada al cargar la página
+            window.addEventListener('load', () => {
+                const fotoPerfilGuardada = localStorage.getItem('foto_perfil_rec');
+                if (fotoPerfilGuardada) {
+                    document.getElementById('foto-perfil').setAttribute('src', fotoPerfilGuardada);
+                }else {
+                    document.getElementById('foto-perfil').setAttribute('src', '../uploads'); // Imagen por defecto si no hay
+                }
+            });
+            // Obtener el número de recolecciones finalizadas
+            const recolectorId = localStorage.getItem('recolector_id');
+            if (recolectorId) {
+                fetch(`/recolecciones-finalizadas?recolectorId=${recolectorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.querySelector('.collection-info span').textContent = data.recoleccionesFinalizadas || 0;
+                })
+                .catch(error => {
+                    console.error('Error al obtener las recolecciones:', error);
+                });
+            }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            function actualizarContadorNotificaciones() {
+                const notificaciones = JSON.parse(localStorage.getItem('notificacionesRecolector')) || []; // Cambia el nombre de la clave según sea necesario
+                const contadorElement = document.getElementById('contadorNotificaciones');
+
+                const notificacionesNoVistas = notificaciones.filter(n => !n.vista);
+                if (notificacionesNoVistas.length > 0) {
+                    contadorElement.textContent = notificacionesNoVistas.length;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            }
+
+            // Cargar el contador de notificaciones al cargar la página
+            actualizarContadorNotificaciones();
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
+    <script src="../js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/notificacionesRecolector.css">
+    <title>Waste Tracker - Notificaciones</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRecolector.html">
+                <img src="../images/logoWT.png" alt="Waste Tracker">
+            </a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html" id="notificacionesLink">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="notifications">
+            <h2>Notificaciones</h2>
+            <div class="notificaciones-recolector" id="notificationsList">
+                <!-- Aquí se agregarán las notificaciones dinámicamente -->
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <nav class="footer-nav">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>
+            <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa"></a>
+            <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+            <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificar"></a>
+        </nav>
+    </footer>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Cargar la biblioteca Socket.IO -->
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const notificationList = document.getElementById('notificationsList');
+            const contadorElement = document.getElementById('contadorNotificaciones');
+            const LIMIT = 10; // Límite de notificaciones a mostrar
+
+            // Función para mostrar una notificación en la lista
+            function mostrarNotificacion(mensaje, fechaHora) {
+                const notificationItem = document.createElement('div');
+                notificationItem.classList.add('notification');
+                notificationItem.innerHTML = `
+                    <p class="message">${mensaje}</p>
+                    <div class="datetime">
+                        <span class="date-time">${new Date(fechaHora).toLocaleString()}</span>
+                    </div>
+                `;
+                notificationList.prepend(notificationItem); // Insertar al principio de la lista
+            }
+
+            // Manejar las notificaciones en tiempo real con Socket.IO
+            const socket = io();
+            socket.on('notificacionUsuario', (data) => {
+                mostrarNotificacion(data.mensaje, data.fecha);
+                actualizarContadorNotificaciones();
+            });
+
+            // Función para cargar las notificaciones existentes desde el servidor
+            function cargarNotificaciones() {
+                fetch('/notificaciones-recolector', {
+                    method: 'GET',
+                    credentials: 'include' // Asegurarse de enviar cookies con la solicitud
+                })
+                .then(response => response.json())
+                .then(notificaciones => {
+                    // Limitar la cantidad de notificaciones a mostrar
+                    const notificacionesRecientes = notificaciones.slice(0, LIMIT);
+                    notificacionesRecientes.forEach((notificacion) => {
+                        mostrarNotificacion(notificacion.mensaje, notificacion.fechaHora);
+                    });
+                })
+                .catch(error => console.error('Error al cargar las notificaciones:', error));
+            }
+
+            // Función para actualizar el contador de notificaciones no vistas
+            function actualizarContadorNotificaciones() {
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include' // Asegurarse de enviar cookies con la solicitud
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const notificacionesNoVistas = data.contador;
+                    if (notificacionesNoVistas > 0) {
+                        contadorElement.textContent = notificacionesNoVistas;
+                        contadorElement.style.display = 'inline-block';
+                    } else {
+                        contadorElement.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error al actualizar el contador de notificaciones:', error));
+            }
+
+            // Cargar notificaciones al cargar la página
+            cargarNotificaciones();
+            actualizarContadorNotificaciones();
+        });
+    </script>
+</body>
+</html>

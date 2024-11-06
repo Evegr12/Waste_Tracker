@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waste Tracker - Inicio Recolector</title>
+    <link rel="stylesheet" href="../styles/inicioRecolector.css">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Cargar la biblioteca Socket.IO -->
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/htmls/inicioRecolector.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
+            <h1>Waste Tracker</h1>
+        </div>
+        <nav>
+            <div class="campana-notificaciones">
+                <a href="/htmls/notificacionesRecolector.html">
+                    <img src="../images/notificaciones.png" alt="Notificaciones">
+                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                </a>
+            </div>
+            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+        </nav>
+    </header>
+    
+    <main>
+        <img src="../images/img_inicioRecolector.png" alt="Imagen-página-principal"><br>
+    </main>
+
+    <footer>
+        <nav class="footer-nav">
+            <div class="tooltip">
+                <a href="/htmls/inicioRecolector.html">
+                    <img src="../images/home-icon.png" alt="Inicio">
+                </a>
+                <span class="tooltiptext">Inicio</span>
+            </div>
+            <div class="tooltip">
+                <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
+                <span class="tooltiptext">Solicitudes enviadas</span>
+            </div>
+            <div class="tooltip">
+                <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
+                <span class="tooltiptext">Solicitudes aceptadas</span>
+            </div>
+            <div class="tooltip">
+                <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificar"></a>
+                <span class="tooltiptext">Calificaciones</span>
+            </div>
+        </nav>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io(); // Inicializa Socket.IO
+
+            // Solicitar el contador de notificaciones al cargar la página
+            socket.emit('obtenerContadorNotificaciones');
+
+            // Escuchar actualizaciones del contador de notificaciones en tiempo real
+            socket.on('nuevaNotificacion', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Escuchar el contador de notificaciones al cargar la página
+            socket.on('contadorNotificaciones', (data) => {
+                actualizarContadorNotificaciones(data.totalNoLeidas);
+            });
+
+            // Función para actualizar el contador de notificaciones
+            function actualizarContadorNotificaciones(cantidad) {
+                const contadorElement = document.getElementById('contadorNotificaciones');
+                if (cantidad > 0) {
+                    contadorElement.textContent = cantidad;
+                    contadorElement.style.display = 'inline-block';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
