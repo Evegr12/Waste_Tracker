@@ -4,20 +4,25 @@ body {
     line-height: 1.6;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f9;
+    background-color: #ffffff;
     color: #333;
     font-size: 18px;
 }
 
 /*Header*/
 .header {
+    position: fixed;
+    top: 0%;
+    width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 40px;
+    padding: 10px 0px;
     background-color: #ffffff;
     border-bottom: 2px solid #e0e0e0;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    z-index: 1000;
+    
 }
 
 .logo {
@@ -79,7 +84,7 @@ b {
 /* Estilo para el contenedor principal */
 .container {
     max-width: 900px;
-    margin: 40px auto; /* Margen automático para centrar */
+    margin: 90px auto; /* Margen automático para centrar */
     padding: 20px;
     background: #ffffff;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
@@ -103,6 +108,10 @@ h2 {
     margin-bottom: 10px;
     text-transform: uppercase; /* Mayúsculas para subtítulos */
     letter-spacing: 1px; /* Espaciado entre letras */
+}
+
+.tituloform{
+    color: #2F4F4F;;
 }
 
 /* Estilo para el texto de los párrafos */
@@ -133,7 +142,7 @@ strong {
 
 /* Estilo para secciones */
 .info-section {
-    margin-top: 30px;
+    margin-top: 40px;
     border-top: 2px solid #e0e0e0;
     padding-top: 20px;
 }
@@ -141,7 +150,7 @@ strong {
 .section-wrapper {
     margin-bottom: 30px;
     padding: 20px;
-    background-color: #f8f8f8;
+    background-color: #ffffff;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
@@ -203,6 +212,102 @@ strong {
 .category li {
     margin-bottom: 8px;
     font-size: 22px;
+}
+
+/*Formularios*/
+.main-container {
+    display: flex;
+    justify-content: center; /* Centramos horizontalmente */
+    align-items: center; /* Centramos verticalmente */
+}
+.form-container {
+    position: relative; /* Cambiar de absolute a relative si estaba absolute */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #ffffff;
+}
+
+.register {
+    margin-top: 130px; /* Ajusta el valor según lo que necesites */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /*centra vertical y horizontalmente en pantalla */
+    height: calc(130vh - 100px);
+
+}
+
+.registerRecolector {
+    margin-top: 100px; /* Ajusta el valor según lo que necesites */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /*centra vertical y horizontalmente en pantalla */
+    height: calc(110vh - 100px);
+
+}
+
+.login {
+    margin-top: 200px; /* Ajusta el valor según lo que necesites */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* centra vertical y horizontalmente en pantalla */
+    height: calc(120vh - 100px); /* Resta el tamaño del header fijo */
+
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 350px;
+    padding: 20px; /* Espacio interno para evitar encimamiento */
+
+}
+
+.logo-login {
+    height: 200px;
+}
+
+.input {
+    background-color: #f1f1f1;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    font-size: 20px;
+}
+
+.label {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-align: left;
+    width: 100%;
+}
+
+/* Espaciado adicional para evitar que los botones se encimen */
+.boton-iniciar-sesion, .boton-registrar {
+    margin-top: 20px; /* Separación entre botones y otros elementos */
+    background-color: #50a88a;
+    border-radius: 10px;
+    border: none;
+    color: white;
+    width: 100%;
+    cursor: pointer;
+    font-size: medium;
+    font-weight: bold;
+    height: 45px;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.boton-iniciar-sesion:hover, .boton-registrar:hover {
+    background-color: #3e8d75;
 }
 
 

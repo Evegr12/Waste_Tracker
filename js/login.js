@@ -2,7 +2,7 @@
 function showLogin() {
     document.getElementById('animacion').style.display = 'none';
     document.getElementById('contenido-principal').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'flex';
+    document.getElementById('loginForm').style.display = 'block';
     document.getElementById('registerFormRestaurante').style.display = 'none';
     document.getElementById('registerFormRecolector').style.display = 'none';
     document.getElementById('footer').style.display = 'none';
@@ -12,7 +12,7 @@ function showRegister() {
     document.getElementById('animacion').style.display = 'none';
     document.getElementById('contenido-principal').style.display = 'none';
     document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('registerFormRestaurante').style.display = 'flex';
+    document.getElementById('registerFormRestaurante').style.display = 'block';
     document.getElementById('registerFormRecolector').style.display = 'none';
     document.getElementById('footer').style.display = 'none';
 }
@@ -20,9 +20,23 @@ function showRegister() {
 function showRegisterRecolector() {
     document.getElementById('animacion').style.display = 'none';
     document.getElementById('registerFormRestaurante').style.display = 'none';
-    document.getElementById('registerFormRecolector').style.display = 'flex';
+    document.getElementById('registerFormRecolector').style.display = 'block';
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('footer').style.display = 'none';
+}
+
+// Función para mostrar mensajes emergentes
+function mostrarMensajeEmergente(mensaje, duracion = 3000, tipo = 'success') {
+    const mensajeContainer = document.getElementById('mensajeEmergenteContainer');
+    mensajeContainer.textContent = mensaje;
+    mensajeContainer.style.display = 'block';
+    mensajeContainer.style.backgroundColor = tipo === 'success' ? '#c8e6c9' : '#ffcdd2';
+    mensajeContainer.style.color = tipo === 'success' ? '#388e3c' : '#d32f2f';
+
+    // Ocultar el mensaje después de `duracion` milisegundos
+    setTimeout(() => {
+        mensajeContainer.style.display = 'none';
+    }, duracion);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -71,16 +85,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const data = await response.json();
 
-                // Aquí no necesitas guardar el token en localStorage porque las cookies se manejan automáticamente
-                console.log('Inicio de sesión exitoso. Redirigiendo...');
-
                 // Redirigir a la página correspondiente según el tipo de usuario
                 const redirectPage = data.tipo_usuario === 'restaurante' ? '../htmls/inicioRestaurante.html' : '../htmls/inicioRecolector.html';
                 window.location.href = redirectPage;
 
             } catch (error) {
                 console.error('Error al iniciar sesión:', error);
-                alert(error.message);
+                mostrarMensajeEmergente(error.message, 3000, 'error');
             }
         });
     }
@@ -111,29 +122,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (response.ok) {
-                    const successMessage = document.getElementById('successMessage');
-                    successMessage.style.display = 'block';  // Muestra el mensaje de éxito
-
-                    // Espera 3 segundos y luego oculta el mensaje y redirige al login
-                    setTimeout(function() {
-                        successMessage.style.display = 'none';  // Oculta el mensaje
-                        window.location.href = '/login';  // Redirige al inicio de sesión
-                    }, 3000); // 3000 milisegundos = 3 segundos
+                    mostrarMensajeEmergente('Recolector registrado correctamente', 3000, 'success');
+                    setTimeout(() => {
+                        window.location.href = '../htmls/login.html';
+                    }, 3000);
+                } else {
+                    mostrarMensajeEmergente('Error al registrar el recolector', 3000, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                window.alert('Hubo un error al intentar registrar el usuario.');
+                mostrarMensajeEmergente('Hubo un error al intentar registrar el usuario.', 3000, 'error');
             }
         });
     }
 
     // Registro Restaurante
     const registerFormRestaurante = document.getElementById('registerFormRestaurante');
-    const registerFormRecolector = document.getElementById('registerFormRecolector');
     if (registerFormRestaurante) {
         registerFormRestaurante.addEventListener('submit', async function(event) {
             event.preventDefault();
-            const form = event.target; // Asegúrate de que 'form' es un elemento HTMLFormElement
+            const form = event.target;
             const formData = new FormData(form);
             try {
                 const response = await fetch('/registroRestaurante', {
@@ -141,20 +149,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData
                 });
                 if (response.ok) {
-                    alert('Restaurante registrado correctamente');
+                    mostrarMensajeEmergente('Restaurante registrado correctamente', 3000, 'success');
+                    setTimeout(() => {
+                        window.location.href = '../htmls/login.html';
+                    }, 3000);
                 } else {
-                    alert('Error al registrar el restaurante');
+                    mostrarMensajeEmergente('Error al registrar el restaurante', 3000, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error interno del servidor');
+                mostrarMensajeEmergente('Error interno del servidor', 3000, 'error');
             }
         });
     }
+
     if (registerFormRecolector) {
         registerFormRecolector.addEventListener('submit', async function(event) {
             event.preventDefault();
-            const form = event.target; // Asegúrate de que 'form' es un elemento HTMLFormElement
+            const form = event.target;
             const formData = new FormData(form);
             try {
                 const response = await fetch('/registroRecolector', {
@@ -162,13 +174,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData
                 });
                 if (response.ok) {
-                    alert('Recolector registrado correctamente');
+                    mostrarMensajeEmergente('Recolector registrado correctamente', 3000, 'success');
                 } else {
-                    alert('Error al registrar el recolector');
+                    mostrarMensajeEmergente('Error al registrar el recolector', 3000, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error interno del servidor');
+                mostrarMensajeEmergente('Error interno del servidor', 3000, 'error');
             }
         });
     }

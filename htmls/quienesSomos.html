@@ -14,7 +14,7 @@
         <nav class="nav-menu" id="header">
             <ul>
                 <li><a href="/htmls/quienesSomos.html" class="menu-item">Quiénes somos</a></li>
-                <li><a href="/htmls/clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>
+                <!--<li><a href="/htmls/clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>-->
             </ul>
         </nav>
         <div id="header" class="auth-buttons">
@@ -23,7 +23,8 @@
         </div>
     </header>
 
-    <div class="container">
+    <!-- Agrega el ID `contenido-principal` que `login.js` intenta ocultar -->
+    <div id="contenido-principal" class="container">
         <h1>Quiénes Somos</h1>
         <p>
             <strong>Waste Tracker</strong> es una innovadora aplicación web diseñada para facilitar la recolección y gestión de residuos orgánicos. Nuestra misión es ayudar a restaurantes y recolectores a colaborar de manera eficiente y efectiva para contribuir a un entorno más sostenible.
@@ -31,30 +32,20 @@
         <section class="info-section">
             <div class="section-wrapper">
                 <h2>Misión</h2>
-                <p>
-                    Promover prácticas sostenibles y responsables en la gestión de residuos orgánicos, reduciendo el impacto ambiental y fomentando la economía circular.
-                </p>
+                <p>Promover prácticas sostenibles y responsables en la gestión de residuos orgánicos, reduciendo el impacto ambiental y fomentando la economía circular.</p>
             </div>
 
             <div class="section-wrapper">
                 <h2>Visión</h2>
-                <p>
-                    Ser la plataforma líder en gestión de residuos orgánicos, reconocida por nuestra contribución a la reducción de desechos y la promoción de un planeta más limpio y saludable.
-                </p>
+                <p>Ser la plataforma líder en gestión de residuos orgánicos, reconocida por nuestra contribución a la reducción de desechos y la promoción de un planeta más limpio y saludable.</p>
             </div>
 
             <div class="section-wrapper">
                 <h2>Objetivos</h2>
                 <ul>
-                    <li>
-                        <strong>Eficiencia:</strong> Facilitar la conexión entre restaurantes y recolectores para optimizar el proceso de recolección de residuos.
-                    </li>
-                    <li>
-                        <strong>Sostenibilidad:</strong> Reducir la cantidad de residuos orgánicos que terminan en vertederos mediante una gestión adecuada.
-                    </li>
-                    <li>
-                        <strong>Colaboración:</strong> Fomentar una red colaborativa donde restaurantes y recolectores trabajen juntos para un objetivo común.
-                    </li>
+                    <li><strong>Eficiencia:</strong> Facilitar la conexión entre restaurantes y recolectores para optimizar el proceso de recolección de residuos.</li>
+                    <li><strong>Sostenibilidad:</strong> Reducir la cantidad de residuos orgánicos que terminan en vertederos mediante una gestión adecuada.</li>
+                    <li><strong>Colaboración:</strong> Fomentar una red colaborativa donde restaurantes y recolectores trabajen juntos para un objetivo común.</li>
                 </ul>
             </div>
         </section>
@@ -62,24 +53,83 @@
         <section class="how-it-works">
             <h2>¿Cómo Funciona?</h2>
             <ol>
-                <li>
-                    <strong>Registro:</strong> Los restaurantes y recolectores se registran en nuestra plataforma.
-                </li>
-                <li>
-                    <strong>Solicitudes de Recolección:</strong> Los restaurantes pueden solicitar la recolección de sus residuos orgánicos de manera sencilla a través de la app.
-                </li>
-                <li>
-                    <strong>Historial de Recolecciones:</strong> Tanto los restaurantes como los recolectores pueden ver el historial de recolecciones, permitiendo un seguimiento transparente y eficiente.
-                </li>
-                <li>
-                    <strong>Evaluación:</strong> Los restaurantes pueden evaluar el servicio de recolección, asegurando una mejora continua en la calidad del servicio.
-                </li>
+                <li><strong>Registro:</strong> Los restaurantes y recolectores se registran en nuestra plataforma.</li>
+                <li><strong>Solicitudes de Recolección:</strong> Los restaurantes pueden solicitar la recolección de sus residuos orgánicos de manera sencilla a través de la app.</li>
+                <li><strong>Historial de Recolecciones:</strong> Tanto los restaurantes como los recolectores pueden ver el historial de recolecciones, permitiendo un seguimiento transparente y eficiente.</li>
+                <li><strong>Evaluación:</strong> Los restaurantes pueden evaluar el servicio de recolección, asegurando una mejora continua en la calidad del servicio.</li>
             </ol>
-            <p>
-                <strong>Waste Tracker</strong> es tu aliado en la gestión sostenible de residuos orgánicos. ¡Únete a nosotros y sé parte del cambio hacia un planeta más limpio y verde!
-            </p>
+            <p><strong>Waste Tracker</strong> es tu aliado en la gestión sostenible de residuos orgánicos. ¡Únete a nosotros y sé parte del cambio hacia un planeta más limpio y verde!</p>
         </section>
     </div>
+
+    <!-- Agrega el contenedor de animación que `login.js` intenta ocultar -->
+    <div id="animacion" style="display: none;">Animación de bienvenida</div>
+    <section class="main-container">
+    <!-- Formulario de inicio de sesión -->
+    <div class="login" id="loginForm" style="display: none;">
+        <div class="form-container">
+            <img src="../images/login.png" alt="logo-login" class="logo-login">
+            <h2 class="tituloform">Te damos la bienvenida a Waste Tracker</h2>
+            <form action="/login" class="form" id="login">
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="text" id="email" placeholder="Correo/usuario" class="input input-email" name="correo" autocomplete="current-correo" required>
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="password" placeholder="Contraseña" class="input input-password" name="contrasenia" autocomplete="current-password" required>
+                <input type="submit" value="Iniciar sesión" class="boton-iniciar-sesion">
+            </form>
+            <p class="sin-cuenta">¿No tienes una cuenta? <a href="#" class="link-a-registro" onclick="showRegister()">Regístrate</a></p>
+        </div>
+    </div>
+
+    <!-- Formulario de registro de restaurante -->
+    <div class="register" id="registerFormRestaurante" style="display: none;">
+        <div class="form-container">
+            <img src="../images/registroRestaurante.png" alt="logo-registro" class="logo-login">
+            <h2 class="tituloform">Registra a tu restaurante</h2>
+            <form id="formRegistroRestaurante" class="form" method="POST">
+                <label for="user" class="label">Usuario</label>
+                <input type="text" id="user" placeholder="Nombre de usuario" class="input input-text" name="usuario" required>
+                <label for="responsableName" class="label">Nombre</label>
+                <input type="text" id="responsableName" placeholder="Nombre del responsable" class="input input-text" name="nombre" required>
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="registerEmail" placeholder="Correo" class="input input-email" name="correo">
+                <label for="restaurantName" class="label">Restaurante</label>
+                <input type="text" id="restaurantName" placeholder="Nombre del Restaurante" class="input input-text" name="nombre_restaurante" required>
+                <label for="addres" class="label">Dirección</label>
+                <input type="text" id="addres" placeholder="Dirección del restaurante" class="input input-text" name="direccion" required>
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="registerPassword" placeholder="Contraseña" class="input input-password" name="contrasenia" required>
+                <input type="submit" value="Regístrate" class="boton-registrar" id="boton-registro-restaurante">
+            </form>
+            <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
+            <p class="sin-cuenta">¿No tienes un restaurante? <a href="#" class="link-a-registro" onclick="showRegisterRecolector()">Regístrate </a>como recolector</p>
+        </div>
+    </div>
+
+    <!-- Formulario de registro de recolector -->
+    <div class="registerRecolector" id="registerFormRecolector" style="display: none;">
+        <div class="form-container">
+            <img src="../images/registroRecolector.png" alt="logo-registroRecolector" class="logo-registroRecolector">
+            <h3 class="tituloform">Ayúdanos a crear un futuro más verde</h3>
+            <form action="/registroRecolector" class="form" method="POST">
+                <label for="recolectorUser" class="label">Usuario</label>
+                <input type="text" id="recolectorUser" placeholder="Nombre de usuario" class="input input-text" name="usuario">
+                <label for="nombreR" class="label">Recolector</label>
+                <input type="text" id="nombreRec" placeholder="Nombre del recolector" class="input input-nombreR" name="nombre">
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="emailRec" placeholder="Correo" class="input input-email" name="correo" autocomplete="current-email">
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="passwordRec" placeholder="Contraseña" class="input input-password" name="contrasenia" autocomplete="current-password" suggested="password">
+                <input type="submit" value="Registrarse" class="boton-registrar" id="boton-registro-recolector">
+                <p id="successMessage" style="display:none;"></p>
+            </form>
+            <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
+        </div>
+    </div>
+    </section>
+    <!-- Pie de página con ID `footer` que `login.js` intenta ocultar -->
+    
+
     <script src="../js/login.js"></script>
 </body>
 </html>

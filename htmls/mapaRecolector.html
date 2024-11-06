@@ -16,6 +16,7 @@
         .accepted-popup {
             background-color: lightgreen;
             font-weight: bold;
+            font-size: 22px;
         }
         .mensaje-emergente {
             position: fixed;
@@ -35,6 +36,7 @@
     </style>
 </head>
 <body>
+    <!-- Header y Logo -->
     <header>
         <div class="logo">
             <a href="/htmls/inicioRecolector.html"><img src="../images/logoWT.png" alt="Waste Tracker"></a>
@@ -52,106 +54,56 @@
     </header>
 
     <center><h1>Solicitudes de Recolección</h1></center>
-
     <div id="map"></div>
     <div id="mensajeEmergente" class="mensaje-emergente"></div>
 
+    <!-- Scripts necesarios para el mapa y la funcionalidad de sockets -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
 
     <script>
         const socket = io();
-        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
-
+        const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*=\s*([^;]*).*$)|^.*$/, "$1");
+    
         if (!token) {
             console.error('No se encontró el token JWT.');
         }
-
+    
         const decodedToken = jwt_decode(token);
         const usuarioId = decodedToken.id;
-        console.log('ID del usuario autenticado:', usuarioId);
-
+    
         socket.on('connect', () => {
             socket.emit('registrarUsuario', usuarioId);
             console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
         });
-
+    
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
         });
-
-        socket.on('notificacionUsuario', (data) => {
-            const { mensaje } = data;
-            mostrarMensajeEmergente(mensaje);
-            actualizarContadorNotificaciones();
-        });
-
-        socket.on('nuevaSolicitud', (solicitud) => {
-            agregarMarcadorSolicitud(solicitud);
-        });
-
-        function agregarMarcadorSolicitud(solicitud) {
-            const marker = L.marker([solicitud.latitude, solicitud.longitude], { icon: iconPending })
-                .addTo(map)
-                .bindPopup(`
-                    <p><b>Restaurante:</b> ${solicitud.nombre}</p>
-                    <p><b>Dirección:</b> ${solicitud.direccion}</p>
-                `);
-        }
-
-        //actualiza el mapa
-        socket.on('actualizarMapa', (data) => {
-
-            const solicitudId = data.solicitudId;
-            const nuevoEstado = data.estado;
-            //actualiza el marcador en el mapa según el nuevo estado
-            if (markers[solicitudId]) {
-                const marker = markers[solicitudId].marker;
-                // Cambia el icono del marcador según el nuevo estado
-                marker.setIcon(nuevoEstado === 'en proceso' ? iconAccepted : iconPending);
-            }
-        });
-    </script>
-
-    <script>
+    
+        // Mapa Leaflet
         const map = L.map('map').setView([19.4326, -99.1332], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
-        const iconPending = L.icon({
-            iconUrl: '../images/marker-icon-red.png',
-            iconSize: [85, 41],
-            iconAnchor: [42, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-        const iconAccepted = L.icon({
-            iconUrl: '../images/marker-icon-purple.png',
-            iconSize: [75, 41],
-            iconAnchor: [42, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        const markers = {};
-
-        fetch('/solicitudes-pendientes', {
-            method: 'GET',
-            credentials: 'include'
-        })
+    
+        const iconPending = L.icon({ iconUrl: '../images/marker-icon-red.png', iconSize: [85, 41] });
+        const iconAccepted = L.icon({ iconUrl: '../images/marker-icon-purple.png', iconSize: [75, 41] });
+    
+        const markers = {}; // Para almacenar marcadores por ID
+    
+        // Muestra solicitudes pendientes en el mapa
+        fetch('/solicitudes-pendientes', { method: 'GET', credentials: 'include' })
         .then(response => response.json())
         .then(data => {
             if (Array.isArray(data)) {
                 data.forEach(request => {
                     if (request.restaurante.latitude && request.restaurante.longitude) {
                         const popupContent = `
-                            <p class="data-restaurante"><b>Restaurante:</b> ${request.restaurante.nombre}<br> <b>Dirección:</b> ${request.restaurante.direccion}</p>
-                            <div class="popup-buttons">
-                                <button class="aceptar-recoleccion" onclick="confirmarAceptacion(${request.id})">Aceptar</button>
-                            </div>
+                            <p class="data-restaurante"><b>Restaurante:</b> ${request.restaurante.nombre}</p>
+                            <p class="data-restaurante"><b>Dirección:</b> ${request.restaurante.direccion}</p>
+                            <button class="aceptar-recoleccion" onclick="confirmarAceptacion(${request.id})">Aceptar</button>
                         `;
                         const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
                             .addTo(map)
@@ -160,83 +112,88 @@
                     }
                 });
             } else {
-                console.error('Error: La respuesta no es un arreglo', data);
+                console.error('Respuesta no es un arreglo:', data);
             }
         })
         .catch(error => console.error('Error fetching requests:', error));
-
+    
+        // Acepta la recolección y actualiza el marcador en el mapa
         async function confirmarAceptacion(id) {
             try {
                 const response = await fetch('/aceptar-recolecciones', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ recoleccion_id: id })
                 });
-
                 const data = await response.json();
-
+    
                 if (data.message === 'Solicitud aceptada y ahora está en proceso') {
+                    mostrarMensajeEmergente('Solicitud aceptada correctamente.');
+    
+                    // Cambia el color del marcador a "aceptado" y muestra mensaje de popup
                     if (markers[id]) {
                         markers[id].marker.setIcon(iconAccepted);
-                        markers[id].accepted = true;
-
                         const popup = markers[id].marker.getPopup();
-                        popup.setContent(`<div class="accepted-popup"><b class="sol-aceptada">Solicitud aceptada</b></div>`);
-                        markers[id].marker.bindPopup(popup);
+                        popup.setContent(`<div class="accepted-popup">Solicitud aceptada</div>`);
+                        markers[id].marker.bindPopup(popup).openPopup();
+    
+                        // Después de 3 segundos, elimina el marcador del mapa
+                        setTimeout(() => {
+                            map.removeLayer(markers[id].marker);
+                            delete markers[id];
+                        }, 3000); // 3000 milisegundos = 3 segundos
                     }
-                    mostrarMensajeEmergente('Solicitud aceptada correctamente.');
                 } else if (data.error) {
                     mostrarMensajeEmergente(`Error: ${data.error}`, 'error');
                 }
             } catch (error) {
-                console.error('Error al aceptar la recolección:', error);
-                mostrarMensajeEmergente('Hubo un error al aceptar las recolecciones. Por favor, intenta de nuevo.', 'error');
+                console.error('Error al aceptar recolección:', error);
+                mostrarMensajeEmergente('Error al aceptar. Intenta de nuevo.', 'error');
             }
         }
-
+    
         function mostrarMensajeEmergente(mensaje, tipo = 'exito') {
             const mensajeEmergente = document.getElementById('mensajeEmergente');
             mensajeEmergente.textContent = mensaje;
-
-            if (tipo === 'error') {
-                mensajeEmergente.classList.add('mensaje-error');
-            } else {
-                mensajeEmergente.classList.remove('mensaje-error');
-            }
-
+            mensajeEmergente.classList.toggle('mensaje-error', tipo === 'error');
             mensajeEmergente.style.display = 'block';
-            setTimeout(() => {
-                mensajeEmergente.style.display = 'none';
-            }, 3000);
+            setTimeout(() => { mensajeEmergente.style.display = 'none'; }, 3000);
         }
-
-        // Función para actualizar la campana de notificaciones
-        function actualizarContadorNotificaciones() {
-                // Obtiene las notificaciones no leídas del servidor
-                fetch('/notificaciones-no-leidas', {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    const numNotificaciones = data.cantidad;
-
-                    if (numNotificaciones > 0) {
-                        contadorNotificaciones.textContent = numNotificaciones;
-                        contadorNotificaciones.style.display = 'inline';
-                    } else {
-                        contadorNotificaciones.style.display = 'none';
-                    }
-                });
-            }
-
-            // Llamar a la función para actualizar la campana cuando se carga la página
-            actualizarContadorNotificaciones();
-    </script>
     
+        function actualizarContadorNotificaciones() {
+            fetch('/notificaciones-no-leidas', { method: 'GET', credentials: 'include' })
+            .then(response => response.json())
+            .then(data => {
+                const numNotificaciones = data.cantidad;
+                const contadorNotificaciones = document.getElementById('contadorNotificaciones');
+                contadorNotificaciones.style.display = numNotificaciones > 0 ? 'inline' : 'none';
+                contadorNotificaciones.textContent = numNotificaciones;
+            });
+        }
+    
+        actualizarContadorNotificaciones();
+    
+        // Escuchar el evento 'solicitudAceptada' desde el servidor
+        socket.on('solicitudAceptada', (data) => {
+            const { solicitudId } = data;
+    
+            // Verifica si existe el marcador con esa solicitudId
+            if (markers[solicitudId]) {
+                markers[solicitudId].marker.setIcon(iconAccepted);
+                const popup = markers[solicitudId].marker.getPopup();
+                popup.setContent(`<div class="accepted-popup">Solicitud aceptada</div>`);
+                markers[solicitudId].marker.bindPopup(popup).openPopup();
+    
+                // Después de 3 segundos, elimina el marcador
+                setTimeout(() => {
+                    map.removeLayer(markers[solicitudId].marker);
+                    delete markers[solicitudId];
+                }, 3000);
+            }
+        });
+    </script>    
+    <!-- Footer -->
     <footer>
         <nav class="footer-nav">
             <a href="/htmls/inicioRecolector.html"><img src="../images/home-icon.png" alt="Inicio"></a>
@@ -247,3 +204,5 @@
     </footer>
 </body>
 </html>
+
+

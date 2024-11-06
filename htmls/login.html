@@ -18,7 +18,7 @@
         <nav class="nav-menu" id="header">
             <ul>
                 <li><a href="/htmls/quienesSomos.html" class="menu-item">Quiénes somos</a></li>
-                <li><a href="/htmls/clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>
+                <!--<li><a href="/htmls/clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>-->
             </ul>
         </nav>
         <div id="header" class="auth-buttons">
@@ -52,7 +52,7 @@
 
             <form action="/login" class="form" id="login">
                 <label for="email" class="label">Correo electrónico</label>
-                <input type="email" id="email" placeholder="Correo" class="input input-email" name="correo"
+                <input type="text" id="email" placeholder="Correo/usuario" class="input input-email" name="correo"
                     autocomplete="current-correo" required>
 
                 <label for="password" class="label">Contraseña</label>
@@ -78,8 +78,8 @@
                 <input type="text" id="user" placeholder="Nombre de usuario" class="input input-text" name="usuario"
                     required>
     
-                <label for="responsableName" class="label">Nombre</label>
-                <input type="text" id="responsableName" placeholder="Nombre del responsable" class="input input-text"
+                <label for="responsableName" class="label">Nombre del responsable</label>
+                <input type="text" id="responsableName" placeholder="Nombre y apellido" class="input input-text"
                     name="nombre" required>
     
                 <label for="email" class="label">Correo electrónico</label>
@@ -92,12 +92,16 @@
                 <label for="addres" class="label">Dirección</label>
                 <input type="text" id="addres" placeholder="Dirección del restaurante" class="input input-text"
                     name="direccion" required>
+                <!-- Nota sobre cómo registrar la dirección -->
+            <p class="address-note">*Ingrese la dirección completa del restaurante: calle, número, colonia, código postal y ciudad para mejor precisión.</p>
     
                 <label for="password" class="label">Contraseña</label>
                 <input type="password" id="registerPassword" placeholder="Contraseña" class="input input-password"
                     name="contrasenia" required>
     
                 <input type="submit" value="Regístrate" class="boton-registrar" id="boton-registro-restaurante">
+                <!-- Mensaje emergente para notificaciones -->
+                <div id="mensajeEmergenteContainer" class="notification" style="display: none;"></div>
             </form>    
         <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
             <p class="sin-cuenta">¿No tienes un restaurante? <a href="#" class="link-a-registro" onclick="showRegisterRecolector()">Regístrate </a>como recolector</p>
@@ -142,7 +146,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
-    <script src="../js/login.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -156,5 +159,6 @@
             });
         }
     </script>
+    <script src="../js/login.js"></script> 
 </body>
 </html>

@@ -106,7 +106,8 @@ const Usuario = sequelize.define('usuarios', {
   },
   usuario: {
     type: DataTypes.STRING(45),
-    allowNull: false
+    allowNull: false,
+    unique: true
   },
   contrasenia: {
     type: DataTypes.STRING(80),
@@ -324,6 +325,11 @@ io.on('connection', (socket) => {
       io.emit('nuevaSolicitud', solicitud); // Emite la nueva solicitud para mostrarla en los mapas
   });
 
+  socket.on('aceptarSolicitud', (solicitudId) => {
+    io.emit('solicitudAceptada', { solicitudId });
+    console.log(`Solicitud con ID ${solicitudId} ha sido aceptada`);
+  });
+
   // Escuchar evento del cliente para obtener el historial de recolecciones
   socket.on('obtenerHistorialRecolecciones', async ({ restaurantesId }) => {
     try {
@@ -411,8 +417,8 @@ app.post('/login', async (req, res) => {
 
   try {
     // Buscar el usuario en la base de datos
-    let query = `SELECT * FROM usuarios WHERE correo = ?`;
-    let results = await sequelize.query(query, { replacements: [correo], type: sequelize.QueryTypes.SELECT });
+    let query = `SELECT * FROM usuarios WHERE correo = ? OR usuario = ?`;
+    let results = await sequelize.query(query, { replacements: [correo, correo], type: sequelize.QueryTypes.SELECT });
 
     if (results && results.length > 0) {
       const user = results[0];
@@ -706,12 +712,27 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
       estado: 'pendiente'
     });
 
+    // Obtener detalles del restaurante para enviarlos al mapa del recolector
+    const restaurante = await Restaurante.findOne({
+      where: { id: restaurantes_id },
+      attributes: ['nombre', 'direccion', 'latitude', 'longitude']
+    });
+
     // Notificar a los recolectores sobre la nueva solicitud
     await notificarRecolectores();
 
     // Notificar al restaurante que su solicitud fue enviada y está pendiente
     await notificarRestaurante(restaurantes_id);
-    io.emit('actualizarMapa', { solicitudId: recoleccion_id, estado: 'pendiente' });
+
+    io.emit('actualizarMapa', {
+      solicitudId: recoleccion.id,
+      nombre: restaurante.nombre,
+      direccion: restaurante.direccion,
+      latitude: coordenadas.lat,
+      longitude: coordenadas.lon,
+      estado: 'pendiente'
+    });
+    
     console.log("Solicitud de recolección enviada correctamente.");
   } catch (error) {
     console.error('Error al guardar la solicitud de recolección:', error);
@@ -883,10 +904,8 @@ app.post('/aceptar-recolecciones', verificarToken, verificarRecolector, async (r
       const usuarioIdRestaurante = await obtenerUsuarioIdDeRestaurante(restauranteId);
       const usuarioIdRecolector = await obtenerUsuarioIdDeRecolector(recolectorId);
 
-      // Enviar notificación al restaurante
+      // Enviar notificación a restaurante y recolector
       await enviarNotificacion(usuarioIdRestaurante, 'Tu solicitud ha sido aceptada');
-
-      // Enviar notificación al recolector
       await enviarNotificacion(usuarioIdRecolector, 'Muy bien! Has aceptado recolectar');
 
       // Emitir notificaciones en tiempo real con Socket.IO
@@ -901,7 +920,7 @@ app.post('/aceptar-recolecciones', verificarToken, verificarRecolector, async (r
           mensaje: "Muy bien! Has aceptado recolectar",
           fecha: new Date().toISOString()
       });
-      io.emit('actualizarMapa', { solicitudId: req.body.recoleccion_id, estado: 'en proceso' });
+      io.emit('solicitudAceptada', { solicitudId: req.body.recoleccion_id, estado: 'en proceso' });
       res.json({ message: 'Solicitud aceptada y ahora está en proceso' });
   } catch (error) {
       console.error('Error al aceptar la recolección:', error);

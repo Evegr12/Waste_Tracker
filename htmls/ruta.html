@@ -47,29 +47,44 @@
     <center><h1>Solicitudes aceptadas</h1></center>
     <div id="map"></div>
     <div id="mensajeEmergente" class="mensaje-emergente"></div>
-
+    <!-- Modal para selección de hora -->
+    <div id="timeModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1001;">
+        <h3>Selecciona la hora estimada de llegada</h3>
+        <label for="ampmSelect">Selecciona AM o PM:</label>
+        <select id="ampmSelect" onchange="updateHourOptions()">
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+        </select>
+        <label for="hourSelect">Selecciona la hora:</label>
+        <select id="hourSelect"></select>
+        <button onclick="confirmETA()">Confirmar</button>
+        <button onclick="closeModal()">Cancelar</button>
+    </div>
+    <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000;" onclick="closeModal()"></div>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet.offline@1.0.0/leaflet.offline.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
 
     <script>
         const socket = io();
-        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+        const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*=\s*([^;]*).*$)|^.*$/, "$1");
+        if (token) {
+            try {
+                const decodedToken = jwt_decode(token);
+                const usuarioId = decodedToken.id;
+                console.log('ID del usuario autenticado:', usuarioId);
 
-        if (!token) {
+                socket.on('connect', () => {
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+                });
+            } catch (error) {
+                console.error('Error al decodificar el token JWT:', error);
+            }
+        } else {
             console.error('No se encontró el token JWT.');
         }
-
-        const decodedToken = jwt_decode(token);
-        const usuarioId = decodedToken.id;
-        console.log('ID del usuario autenticado:', usuarioId);
-
-        socket.on('connect', () => {
-            socket.emit('registrarUsuario', usuarioId);
-            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
-        });
 
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
@@ -86,30 +101,26 @@
             const { solicitudId, estado, eta } = data;
             if (markers[solicitudId]) {
                 const marker = markers[solicitudId];
-                const newIcon = estado === 'pendiente' ? iconPending :
-                                estado === 'en camino' ? iconOnTheWay :
-                                estado === 'llegada' ? iconArrived :
+                actualizarPopup(marker, solicitudId, estado, eta); // Llamada a la función para actualizar el popup
+
+                // Actualiza el ícono según el nuevo estado
+                const newIcon = estado === 'en camino' ? iconOnTheWay :
+                                estado === 'llegada' ? iconOnTheWay :
                                 estado === 'finalizada' ? iconCompleted :
                                 iconPending;
-
                 marker.setIcon(newIcon);
-                const popupContent = `<p>Estado: ${estado}</p>${eta ? `<p>ETA: ${eta}</p>` : ''}`;
-                marker.bindPopup(popupContent);
             }
         });
-    </script>
 
-    <script>
         const map = L.map('map').setView([19.4326, -99.1332], 12);
-
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
         const iconPending = L.icon({
-            iconUrl: '../images/marker-icon-red.png',
-            iconSize: [85, 41],
-            iconAnchor: [42, 41],
+            iconUrl: '../images/marker-icon-purple.png',
+            iconSize: [80, 41],
+            iconAnchor: [35, 41],
             popupAnchor: [1, -34],
             shadowSize: [41, 41]
         });
@@ -127,7 +138,7 @@
             popupAnchor: [1, -34],
             shadowSize: [41, 41]
         });
-        
+
         const markers = {};
 
         fetch('/solicitudes-aceptadas', {
@@ -140,6 +151,7 @@
                 data.forEach(request => {
                     if (request.restaurante.latitude && request.restaurante.longitude) {
                         const icon = (request.estado === 'en camino') ? iconOnTheWay :
+                                    (request.estado === 'llegada') ? iconOnTheWay :
                                     (request.estado === 'finalizada') ? iconCompleted :
                                     iconPending;
 
@@ -176,15 +188,67 @@
         .catch(error => console.error('Error al obtener las solicitudes aceptadas:', error));
 
         function updateStatus(requestId, status) {
-            let eta = null;
             if (status === 'en camino') {
-                eta = prompt('Ingrese la hora estimada de llegada (formato hh:mm am/pm):');
-                if (!validateTimeFormat(eta)) {
-                    alert('Formato de hora inválido. Use el formato hh:mm am/pm.');
-                    return;
-                }
+                openModal(requestId);  // Abre el modal para seleccionar la ETA
+            } else {
+                // Si no es "en camino", continúa con la actualización sin ETA
+                enviarActualizacion(requestId, status, null);
             }
+        }
 
+        function updateHourOptions() {
+            const ampm = document.getElementById("ampmSelect").value;
+            const hourSelect = document.getElementById("hourSelect");
+            hourSelect.innerHTML = ""; // Limpiar opciones previas
+
+            const startHour = ampm === "AM" ? 8 : 12; // Iniciar en 8 AM o 12 PM
+            const endHour = ampm === "AM" ? 11 : 19;  // Terminar en 11 AM o 7 PM
+
+            for (let i = startHour; i <= endHour; i++) {
+                const hourOption = document.createElement("option");
+                hourOption.value = i < 10 ? `0${i}:00` : `${i}:00`;
+                hourOption.textContent = `${i}:00`;
+                hourSelect.appendChild(hourOption);
+            }
+        }
+
+        function openModal(requestId) {
+            document.getElementById('timeModal').style.display = 'block';
+            document.getElementById('modalOverlay').style.display = 'block';
+            document.getElementById('timeModal').dataset.requestId = requestId;
+            updateHourOptions(); // Actualizar las opciones de hora al abrir el modal
+        }
+
+        function closeModal() {
+            document.getElementById('timeModal').style.display = 'none';
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        function confirmETA() {
+            const ampm = document.getElementById("ampmSelect").value;
+            const hour = document.getElementById("hourSelect").value;
+            const eta = `${hour} ${ampm}`;
+            const requestId = document.getElementById('timeModal').dataset.requestId;
+
+            if (isValidETA(eta)) {
+                enviarActualizacion(requestId, 'en camino', eta);  // Envía la hora seleccionada como ETA
+                closeModal();
+            } else {
+                mostrarMensajeEmergente('Por favor, selecciona una hora en el futuro dentro del horario de 8:00 a.m. a 7:00 p.m.');
+            }
+        }
+
+        function isValidETA(eta) {
+            const [hour, ampm] = eta.split(" ");
+            const selectedHour = parseInt(hour, 10);
+            const now = new Date();
+            const currentHour = now.getHours();
+            const isFuture = (ampm === "PM" && selectedHour + 11 > currentHour) || (ampm === "AM" && selectedHour >= 8 && selectedHour < 12);
+
+            return (ampm === "AM" && selectedHour >= 8 && selectedHour <= 11) || (ampm === "PM" && selectedHour >= 12 && selectedHour <= 7 && isFuture);
+        }
+
+        function enviarActualizacion(requestId, status, eta) {
             fetch(`/update-status/${requestId}`, {
                 method: 'PATCH',
                 credentials: 'include',
@@ -197,13 +261,7 @@
             .then(data => {
                 if (data.success) {
                     mostrarMensajeEmergente('Estado actualizado correctamente.');
-
-                    // Emitir el evento de actualización para el estado "pendiente"
-                    if (status === 'pendiente') {
-                        socket.emit('actualizarMapa', { solicitudId: requestId, estado: 'pendiente' });
-                    }
-
-                    setTimeout(() => location.reload(), 3000);
+                    socket.emit('actualizarMapa', { solicitudId: requestId, estado: status, eta });
                 } else {
                     mostrarMensajeEmergente('Error al actualizar el estado.', 'error');
                 }
@@ -214,46 +272,29 @@
             });
         }
 
-        function validateTimeFormat(timeString) {
-            const regex = /^([01]?[0-9]|2[0-3]):([0-5][0-9]) (am|pm)$/i;
-            return regex.test(timeString);
-        }
-
         function mostrarMensajeEmergente(mensaje, tipo = 'exito') {
             const mensajeEmergente = document.getElementById('mensajeEmergente');
             mensajeEmergente.textContent = mensaje;
-
-            if (tipo === 'error') {
-                mensajeEmergente.classList.add('mensaje-error');
-            } else {
-                mensajeEmergente.classList.remove('mensaje-error');
-            }
-
+            mensajeEmergente.classList.toggle('mensaje-error', tipo === 'error');
             mensajeEmergente.style.display = 'block';
             setTimeout(() => mensajeEmergente.style.display = 'none', 3000);
         }
 
         function actualizarContadorNotificaciones() {
-                // Obtiene las notificaciones no leídas del servidor
-                fetch('/notificaciones-no-leidas', {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    const numNotificaciones = data.cantidad;
+            fetch('/notificaciones-no-leidas', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const numNotificaciones = data.cantidad;
+                const contadorNotificaciones = document.getElementById('contadorNotificaciones');
+                contadorNotificaciones.style.display = numNotificaciones > 0 ? 'inline' : 'none';
+                contadorNotificaciones.textContent = numNotificaciones;
+            });
+        }
 
-                    if (numNotificaciones > 0) {
-                        contadorNotificaciones.textContent = numNotificaciones;
-                        contadorNotificaciones.style.display = 'inline';
-                    } else {
-                        contadorNotificaciones.style.display = 'none';
-                    }
-                });
-            }
-
-            // Llamar a la función para actualizar la campana cuando se carga la página
-            actualizarContadorNotificaciones();
+        actualizarContadorNotificaciones();
     </script>
 
     <footer>
@@ -266,6 +307,5 @@
     </footer>
 </body>
 </html>
-
 
 

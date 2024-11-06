@@ -295,6 +295,28 @@ footer {
     font-size: 20px;
 }
 
+.address-note {
+    font-size: 0.9em;
+    color: #555;
+    margin-top: 5px;
+}
+
+/* Estilos para el mensaje emergente */
+.notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #50a88a;
+    color: white;
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 20px;
+    font-weight: bold;
+    z-index: 1000;
+    display: none;
+}
+
 /* Buttons */
 .boton-iniciar-sesion, .boton-registrar {
     margin-top: 10px;

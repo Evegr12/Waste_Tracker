@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <link rel="stylesheet" href="../styles/stylesquienes.css">
+    <link rel="stylesheet" href="../styles/clasificacion.css">
 </head>
 <body>
-    <header class="header" id="header">
+    <header class="header">
         <div class="logo">
             <a href="/htmls/login.html"><img src="../images/logoWT.png" alt="Waste Tracker Logo" class="logo-image"></a><b>Waste Tracker</b>
         </div>
-        <nav class="nav-menu" id="header">
+        <nav class="nav-menu">
             <ul>
                 <li><a href="/htmls/quienesSomos.html" class="menu-item">Quiénes somos</a></li>
                 <li><a href="/htmls/clasificacionResiduos.html" class="menu-item">Clasificación de residuos</a></li>
             </ul>
         </nav>
-        <div id="header" class="auth-buttons">
+        <div class="auth-buttons">
             <button class="login-button" onclick="showLogin()">Iniciar sesión</button>
             <button class="register-button" onclick="showRegister()">Regístrate</button>
         </div>
     </header>
 
+    <!-- Agrega el ID `contenido-principal` que `login.js` intenta ocultar -->
+    <div id="contenido-principal" class="container">
     <section class="waste-classification">
         <h1>Clasificación de Residuos</h1>
         <p>Conoce cómo separar y manejar tus residuos de manera eficiente y sostenible.</p>
@@ -77,6 +79,75 @@
             </ul>
         </div>
     </section>
+
+    <!-- Agrega el contenedor de animación que `login.js` intenta ocultar -->
+    <div id="animacion" style="display: none;">Animación de bienvenida</div>
+    <section class="main-container">
+    <!-- Formulario de inicio de sesión -->
+    <div class="login" id="loginForm" style="display: none;">
+        <div class="form-container">
+            <img src="../images/login.png" alt="logo-login" class="logo-login">
+            <h2 class="tituloform">Te damos la bienvenida a Waste Tracker</h2>
+            <form action="/login" class="form" id="login">
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="email" placeholder="Correo" class="input input-email" name="correo" autocomplete="current-correo" required>
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="password" placeholder="Contraseña" class="input input-password" name="contrasenia" autocomplete="current-password" required>
+                <input type="submit" value="Iniciar sesión" class="boton-iniciar-sesion">
+            </form>
+            <p class="sin-cuenta">¿No tienes una cuenta? <a href="#" class="link-a-registro" onclick="showRegister()">Regístrate</a></p>
+        </div>
+    </div>
+
+    <!-- Formulario de registro de restaurante -->
+    <div class="register" id="registerFormRestaurante" style="display: none;">
+        <div class="form-container">
+            <img src="../images/registroRestaurante.png" alt="logo-registro" class="logo-login">
+            <h2 class="tituloform">Registra a tu restaurante</h2>
+            <form id="formRegistroRestaurante" class="form" method="POST">
+                <label for="user" class="label">Usuario</label>
+                <input type="text" id="user" placeholder="Nombre de usuario" class="input input-text" name="usuario" required>
+                <label for="responsableName" class="label">Nombre</label>
+                <input type="text" id="responsableName" placeholder="Nombre del responsable" class="input input-text" name="nombre" required>
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="registerEmail" placeholder="Correo" class="input input-email" name="correo">
+                <label for="restaurantName" class="label">Restaurante</label>
+                <input type="text" id="restaurantName" placeholder="Nombre del Restaurante" class="input input-text" name="nombre_restaurante" required>
+                <label for="addres" class="label">Dirección</label>
+                <input type="text" id="addres" placeholder="Dirección del restaurante" class="input input-text" name="direccion" required>
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="registerPassword" placeholder="Contraseña" class="input input-password" name="contrasenia" required>
+                <input type="submit" value="Regístrate" class="boton-registrar" id="boton-registro-restaurante">
+            </form>
+            <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
+            <p class="sin-cuenta">¿No tienes un restaurante? <a href="#" class="link-a-registro" onclick="showRegisterRecolector()">Regístrate </a>como recolector</p>
+        </div>
+    </div>
+
+    <!-- Formulario de registro de recolector -->
+    <div class="registerRecolector" id="registerFormRecolector" style="display: none;">
+        <div class="form-container">
+            <img src="../images/registroRecolector.png" alt="logo-registroRecolector" class="logo-registroRecolector">
+            <h3 class="tituloform">Ayúdanos a crear un futuro más verde</h3>
+            <form action="/registroRecolector" class="form" method="POST">
+                <label for="recolectorUser" class="label">Usuario</label>
+                <input type="text" id="recolectorUser" placeholder="Nombre de usuario" class="input input-text" name="usuario">
+                <label for="nombreR" class="label">Recolector</label>
+                <input type="text" id="nombreRec" placeholder="Nombre del recolector" class="input input-nombreR" name="nombre">
+                <label for="email" class="label">Correo electrónico</label>
+                <input type="email" id="emailRec" placeholder="Correo" class="input input-email" name="correo" autocomplete="current-email">
+                <label for="password" class="label">Contraseña</label>
+                <input type="password" id="passwordRec" placeholder="Contraseña" class="input input-password" name="contrasenia" autocomplete="current-password" suggested="password">
+                <input type="submit" value="Registrarse" class="boton-registrar" id="boton-registro-recolector">
+                <p id="successMessage" style="display:none;"></p>
+            </form>
+            <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
+        </div>
+    </div>
+    </section>
+    <!-- Pie de página con ID `footer` que `login.js` intenta ocultar -->
+    
     <script src="../js/login.js"></script>
+    
 </body>
 </html>
