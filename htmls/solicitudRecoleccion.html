@@ -207,16 +207,16 @@
                     } else {
                         // Enviar la solicitud al servidor
                         fetch('/solicitar-recoleccion', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            restaurantes_id: restaurante.id,
-                            direccion: restaurante.direccion,
-                            estado: "pendiente"
-                        })
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                restaurantes_id: restaurante.id,
+                                direccion: restaurante.direccion,
+                                estado: "pendiente"
+                            })
                         })
                         .then(response => {
                         // Verificar si la respuesta es exitosa (status 200-299)

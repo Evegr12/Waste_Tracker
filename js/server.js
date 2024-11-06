@@ -331,7 +331,7 @@ io.on('connection', (socket) => {
   });
 
   // Escuchar evento del cliente para obtener el historial de recolecciones
-  socket.on('obtenerHistorialRecolecciones', async ({ restaurantesId }) => {
+  socket.on('obtenerHistorialRecolecciones', async ({ usuarioId: restaurantesId }) => {
     try {
         const recolecciones = await Recoleccion.findAll({
             where: {
@@ -1062,7 +1062,8 @@ app.patch('/update-status/:id', verificarToken, async (req, res) => {
 
     // Emitir evento para actualizar el mapa en tiempo real
     io.emit('actualizarMapa', { solicitudId: id, estado: status, eta });
-    
+    console.log(`Evento actualizarMapa emitido para solicitud ID: ${id}, Estado: ${status}`);
+  
     res.json({ success: true });
   } catch (error) {
     console.error('Error al actualizar el estado:', error);

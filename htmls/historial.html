@@ -45,21 +45,24 @@
     <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
-        const socket = io();
-        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+       const socket = io();
+        const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*=\s*([^;]*).*$)|^.*$/, "$1");
+        if (token) {
+            try {
+                const decodedToken = jwt_decode(token);
+                const usuarioId = decodedToken.id;
+                console.log('ID del usuario autenticado:', usuarioId);
 
-        if (!token) {
+                socket.on('connect', () => {
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+                });
+            } catch (error) {
+                console.error('Error al decodificar el token JWT:', error);
+            }
+        } else {
             console.error('No se encontró el token JWT.');
         }
-
-        const decodedToken = jwt_decode(token);
-        const usuarioId = decodedToken.id;
-        console.log('ID del usuario autenticado:', usuarioId);
-
-        socket.on('connect', () => {
-            socket.emit('registrarUsuario', usuarioId);
-            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
-        });
 
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
@@ -70,18 +73,12 @@
             mostrarMensajeEmergente(mensaje);
             actualizarContadorNotificaciones();
         });
+
     </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const historialContainer = document.getElementById('historial-container');
-
-            const restaurantesId = localStorage.getItem('restaurantes_id'); // Obtener ID del restaurante
-
-            if (!restaurantesId) {
-                alert('No se encontró el ID del restaurante. Por favor, inicie sesión nuevamente.');
-                return;
-            }
 
             // Solicitar historial de recolecciones
             socket.emit('obtenerHistorialRecolecciones', { restaurantesId });
@@ -119,18 +116,6 @@
                 }
             });
 
-            // Escuchar actualizaciones del contador de notificaciones en tiempo real
-            socket.on('nuevaNotificacion', (data) => {
-                actualizarContadorNotificaciones(data.totalNoLeidas);
-            });
-
-            // Solicitar el contador de notificaciones al cargar la página
-            socket.emit('obtenerContadorNotificaciones');
-
-            // Escuchar el contador de notificaciones
-            socket.on('contadorNotificaciones', (data) => {
-                actualizarContadorNotificaciones();
-            });
 
             // Función para actualizar la campana de notificaciones
             function actualizarContadorNotificaciones() {
