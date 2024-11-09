@@ -72,6 +72,11 @@
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
         });
+        socket.on('notificacionUsuario', (data) => {
+                const { mensaje } = data;
+                mostrarMensajeEmergente(mensaje);
+                actualizarContadorNotificaciones();
+            });
     </script>
 
     <script>

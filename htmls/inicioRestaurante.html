@@ -95,8 +95,6 @@
             socket.on('notificacionUsuario', (data) => {
                 const { mensaje } = data;
                 mostrarMensajeEmergente(mensaje);
-
-                // Actualiza la campana de notificaciones
                 actualizarContadorNotificaciones();
             });
 

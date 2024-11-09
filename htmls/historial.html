@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial de Residuos Vertidos</title>
     <link rel="stylesheet" href="../styles/historial.css">
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> <!-- Integración de Socket.IO -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
     <header>
@@ -43,10 +43,10 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
-       const socket = io();
+        const socket = io();
         const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*=\s*([^;]*).*$)|^.*$/, "$1");
+
         if (token) {
             try {
                 const decodedToken = jwt_decode(token);
@@ -54,9 +54,31 @@
                 console.log('ID del usuario autenticado:', usuarioId);
 
                 socket.on('connect', () => {
-                    socket.emit('registrarUsuario', usuarioId);
-                    console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+                socket.emit('registrarUsuario', usuarioId);
+                console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+
+                // Solicitar el ID del restaurante al backend
+                fetch('/restaurante-info', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.id) {
+                        const restaurantesId = data.id; // Obtener el ID del restaurante
+                        console.log('ID del restaurante obtenido:', restaurantesId); // Verificación
+
+                        // Emitir evento para obtener el historial de recolecciones
+                        socket.emit('obtenerHistorialRecolecciones', { restaurantesId: restaurantesId });
+                    } else {
+                        console.error('Error: No se encontró restaurantes_id para este usuario.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al obtener la información del restaurante:', error);
                 });
+            });
+
             } catch (error) {
                 console.error('Error al decodificar el token JWT:', error);
             }
@@ -68,78 +90,60 @@
             console.log(`Socket desconectado: ${socket.id}`);
         });
 
-        socket.on('notificacionUsuario', (data) => {
-            const { mensaje } = data;
-            mostrarMensajeEmergente(mensaje);
-            actualizarContadorNotificaciones();
+        // Recibir historial de recolecciones del servidor
+        socket.on('historialRecolecciones', (data) => {
+            const historialContainer = document.getElementById('historial-container');
+            historialContainer.innerHTML = '';
+
+            if (data.success && data.recolecciones.length > 0) {
+                data.recolecciones.forEach(recoleccion => {
+                    const recolectorNombre = recoleccion.recolectore && recoleccion.recolectore.usuario
+                        ? recoleccion.recolectore.usuario.nombre
+                        : 'Recolector';
+                    
+                    const fechaFin = recoleccion.fecha_recoleccion
+                        ? new Date(recoleccion.fecha_recoleccion).toLocaleString('es-ES')
+                        : 'Fecha no disponible';
+                    
+                    const entry = document.createElement('div');
+                    entry.classList.add('entry');
+                    entry.innerHTML = `
+                        <div class="entry-header">
+                            <span class="by">Por:</span>
+                            <img src="../images/perfil-icon.png" alt="User Icon" class="user-icon">
+                            <span class="name">${recolectorNombre}</span>
+                        </div>
+                        <div class="entry-info">
+                            <span class="date-time">${fechaFin}</span>
+                        </div>
+                    `;
+                    historialContainer.prepend(entry);
+                });
+            } else {
+                historialContainer.innerHTML = '<p>No hay recolecciones finalizadas.</p>';
+            }
         });
 
-    </script>
+        function actualizarContadorNotificaciones() {
+            fetch('/notificaciones-no-leidas', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const contadorNotificaciones = document.getElementById('contadorNotificaciones');
+                const numNotificaciones = data.cantidad;
 
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const historialContainer = document.getElementById('historial-container');
-
-            // Solicitar historial de recolecciones
-            socket.emit('obtenerHistorialRecolecciones', { restaurantesId });
-
-            // Escuchar el evento de historial de recolecciones
-            socket.on('historialRecolecciones', (data) => {
-                if (data.success && data.recolecciones.length > 0) {
-
-                    data.recolecciones.forEach(recoleccion => {
-                        const recolectorNombre = recoleccion.recolectore && recoleccion.recolectore.usuario
-                            ? recoleccion.recolectore.usuario.nombre
-                            : 'Recolector';
-    
-                        const fechaFin = recoleccion.fecha_recoleccion
-                            ? new Date(recoleccion.fecha_recoleccion).toLocaleString('es-ES')
-                            : 'Fecha no disponible';
-    
-                        const entry = document.createElement('div');
-                        entry.classList.add('entry');
-    
-                        entry.innerHTML = `
-                            <div class="entry-header">
-                                <span class="by">Por:</span>
-                                <img src="../images/perfil-icon.png" alt="User Icon" class="user-icon">
-                                <span class="name">${recolectorNombre}</span>
-                            </div>
-                            <div class="entry-info">
-                                <span class="date-time">${fechaFin}</span>
-                            </div>
-                        `;
-                        historialContainer.prepend(entry); // Agregar la entrada al inicio
-                    });
+                if (numNotificaciones > 0) {
+                    contadorNotificaciones.textContent = numNotificaciones;
+                    contadorNotificaciones.style.display = 'inline';
                 } else {
-                    historialContainer.innerHTML = '<p>No hay recolecciones finalizadas.</p>';
+                    contadorNotificaciones.style.display = 'none';
                 }
             });
+        }
 
-
-            // Función para actualizar la campana de notificaciones
-            function actualizarContadorNotificaciones() {
-                // Obtiene las notificaciones no leídas del servidor
-                fetch('/notificaciones-no-leidas', {
-                    method: 'GET',
-                    credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    const numNotificaciones = data.cantidad;
-
-                    if (numNotificaciones > 0) {
-                        contadorNotificaciones.textContent = numNotificaciones;
-                        contadorNotificaciones.style.display = 'inline';
-                    } else {
-                        contadorNotificaciones.style.display = 'none';
-                    }
-                });
-            }
-
-            // Llamar a la función para actualizar la campana cuando se carga la página
-            actualizarContadorNotificaciones();
-        });
+        actualizarContadorNotificaciones();
     </script>
 </body>
 </html>

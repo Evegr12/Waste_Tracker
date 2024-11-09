@@ -107,7 +107,7 @@ const Usuario = sequelize.define('usuarios', {
   usuario: {
     type: DataTypes.STRING(45),
     allowNull: false,
-    unique: true
+    unique: false
   },
   contrasenia: {
     type: DataTypes.STRING(80),
@@ -331,7 +331,8 @@ io.on('connection', (socket) => {
   });
 
   // Escuchar evento del cliente para obtener el historial de recolecciones
-  socket.on('obtenerHistorialRecolecciones', async ({ usuarioId: restaurantesId }) => {
+  socket.on('obtenerHistorialRecolecciones', async ({ restaurantesId }) => {
+
     try {
         const recolecciones = await Recoleccion.findAll({
             where: {
@@ -424,7 +425,7 @@ app.post('/login', async (req, res) => {
       const user = results[0];
       const match = await bcrypt.compare(contrasenia, user.contrasenia); // Verificar contraseña
       if (!match) {
-        return res.status(401).json({ error: 'Correo electrónico o contraseña incorrectos' });
+        return res.status(401).json({ error: 'Correo electrónico/usuario o contraseña incorrectos' });
       }
 
       const restaurante = await Restaurante.findOne({ where: { usuarios_id: user.id } });
@@ -457,7 +458,7 @@ app.post('/login', async (req, res) => {
         fotoPerfil: user.fotoPerfil
       });
     } else {
-      res.status(401).json({ error: 'Correo electrónico o contraseña incorrectos' });
+      res.status(401).json({ error: 'Correo/usuario o contraseña incorrectos' });
     }
   } catch (error) {
     console.error('Error al iniciar sesión', error);
@@ -613,25 +614,6 @@ async function obtenerCoordenadas(direccion) {
   }
 }
 
-//ruga para mostrar al restaurante en su mapa
-// Ruta protegida para obtener datos del restaurante
-app.get('/api/restaurante', verificarToken, async (req, res) => {
-  try {
-      const restaurante = await Restaurante.findOne({ where: { id: req.user.restaurantes_id } });
-      if (restaurante) {
-          res.json({
-              nombre: restaurante.nombre,
-              coordenadas: restaurante.coordenadas
-          });
-      } else {
-          res.status(404).json({ error: 'Restaurante no encontrado' });
-      }
-  } catch (error) {
-      console.error('Error al obtener los datos del restaurante:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
 app.get('/restaurante-info', verificarToken, async (req, res) => {
   try {
       const usuario = await Usuario.findByPk(req.user.id, {
@@ -692,6 +674,7 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
   console.log("Dirección recibida:", direccion);
 
   try {
+    // Obtener coordenadas de la dirección proporcionada
     const coordenadas = await obtenerCoordenadas(direccion);
 
     if (coordenadas.lat === null || coordenadas.lon === null) {
@@ -701,18 +684,20 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
 
     console.log("Coordenadas obtenidas:", coordenadas);
 
+    // Actualizar la ubicación del restaurante en la base de datos
     await Restaurante.update(
       { latitude: coordenadas.lat, longitude: coordenadas.lon },
       { where: { id: restaurantes_id } }
     );
 
+    // Crear una nueva solicitud de recolección
     const recoleccion = await Recoleccion.create({
       restaurantes_id: restaurantes_id,
       fecha_solicitud: new Date(),
       estado: 'pendiente'
     });
 
-    // Obtener detalles del restaurante para enviarlos al mapa del recolector
+    // Obtener detalles del restaurante para notificar a los recolectores
     const restaurante = await Restaurante.findOne({
       where: { id: restaurantes_id },
       attributes: ['nombre', 'direccion', 'latitude', 'longitude']
@@ -724,6 +709,7 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
     // Notificar al restaurante que su solicitud fue enviada y está pendiente
     await notificarRestaurante(restaurantes_id);
 
+    // Emitir un evento para actualizar el mapa de los recolectores en tiempo real
     io.emit('actualizarMapa', {
       solicitudId: recoleccion.id,
       nombre: restaurante.nombre,
@@ -734,6 +720,10 @@ app.post('/solicitar-recoleccion', verificarToken, async (req, res) => {
     });
     
     console.log("Solicitud de recolección enviada correctamente.");
+
+    // Enviar una respuesta exitosa al cliente
+    res.json({ message: '¡Solicitud enviada exitosamente!' });
+
   } catch (error) {
     console.error('Error al guardar la solicitud de recolección:', error);
     res.status(500).json({ error: 'Error al enviar la solicitud de recolección' });
@@ -1375,23 +1365,6 @@ app.get('/calificaciones-recolector/:recolectorId', verificarToken, async (req, 
   } catch (error) {
       console.error('Error al obtener las calificaciones:', error);
       res.status(500).json({ success: false, message: 'Error al obtener las calificaciones' });
-  }
-});
-
-// Ruta para obtener un mensaje de recolección por ID
-app.get('/mensaje-recoleccion/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const mensaje = await MensajeRecoleccion.findByPk(id);
-
-    if (!mensaje) {
-      return res.status(404).json({ message: 'Mensaje no encontrado' });
-    }
-
-    res.json(mensaje);
-  } catch (error) {
-    console.error('Error al obtener el mensaje de recolección:', error);
-    res.status(500).json({ error: 'Ocurrió un error al obtener el mensaje de recolección' });
   }
 });
 

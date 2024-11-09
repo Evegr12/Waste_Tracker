@@ -51,7 +51,7 @@
             <h2>Te damos la bienvenida a Waste Tracker</h2>
 
             <form action="/login" class="form" id="login">
-                <label for="email" class="label">Correo electrónico</label>
+                <label for="email" class="label">Correo electrónico/usuario</label>
                 <input type="text" id="email" placeholder="Correo/usuario" class="input input-email" name="correo"
                     autocomplete="current-correo" required>
 
@@ -65,6 +65,8 @@
             <p class="sin-cuenta">¿No tienes una cuenta? <a href="#" class="link-a-registro"
                     onclick="showRegister()">Regístrate</a></p>
         </div>
+        <!-- Mensaje emergente -->
+        <div id="mensajeEmergenteContainer" class="notification" style="display: none;"></div>
     </div>
 
     <div class="register" id="registerFormRestaurante" style="display: none;">
@@ -100,8 +102,6 @@
                     name="contrasenia" required>
     
                 <input type="submit" value="Regístrate" class="boton-registrar" id="boton-registro-restaurante">
-                <!-- Mensaje emergente para notificaciones -->
-                <div id="mensajeEmergenteContainer" class="notification" style="display: none;"></div>
             </form>    
         <p class="con-cuenta">¿Ya tienes una cuenta? <a href="#" class="link-a-login" onclick="showLogin()">Inicia sesión</a></p>
             <p class="sin-cuenta">¿No tienes un restaurante? <a href="#" class="link-a-registro" onclick="showRegisterRecolector()">Regístrate </a>como recolector</p>

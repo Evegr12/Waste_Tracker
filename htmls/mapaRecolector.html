@@ -81,6 +81,14 @@
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
         });
+
+        socket.on('notificacionUsuario', (data) => {
+                const { mensaje } = data;
+                mostrarMensajeEmergente(mensaje);
+
+                // Actualiza la campana de notificaciones
+                actualizarContadorNotificaciones();
+            });
     
         // Mapa Leaflet
         const map = L.map('map').setView([19.4326, -99.1332], 12);
@@ -92,31 +100,46 @@
         const iconAccepted = L.icon({ iconUrl: '../images/marker-icon-purple.png', iconSize: [75, 41] });
     
         const markers = {}; // Para almacenar marcadores por ID
+
+        // Función para mostrar las solicitudes pendientes en el mapa
+        function cargarSolicitudesPendientes() {
+            fetch('/solicitudes-pendientes', { method: 'GET', credentials: 'include' })
+            .then(response => response.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(request => {
+                        if (request.restaurante.latitude && request.restaurante.longitude) {
+                            const popupContent = `
+                                <p class="data-restaurante"><b>Restaurante:</b> ${request.restaurante.nombre}</p>
+                                <p class="data-restaurante"><b>Dirección:</b> ${request.restaurante.direccion}</p>
+                                <button class="aceptar-recoleccion" onclick="confirmarAceptacion(${request.id})">Aceptar</button>
+                            `;
+                            const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
+                                .addTo(map)
+                                .bindPopup(popupContent);
+                            markers[request.id] = { marker, accepted: false };
+                        }
+                    });
+                } else {
+                    console.error('Respuesta no es un arreglo:', data);
+                }
+            })
+            .catch(error => console.error('Error fetching requests:', error));
+        }
+        
+        // Cargar solicitudes pendientes al cargar la página
+        cargarSolicitudesPendientes();
     
-        // Muestra solicitudes pendientes en el mapa
-        fetch('/solicitudes-pendientes', { method: 'GET', credentials: 'include' })
-        .then(response => response.json())
-        .then(data => {
-            if (Array.isArray(data)) {
-                data.forEach(request => {
-                    if (request.restaurante.latitude && request.restaurante.longitude) {
-                        const popupContent = `
-                            <p class="data-restaurante"><b>Restaurante:</b> ${request.restaurante.nombre}</p>
-                            <p class="data-restaurante"><b>Dirección:</b> ${request.restaurante.direccion}</p>
-                            <button class="aceptar-recoleccion" onclick="confirmarAceptacion(${request.id})">Aceptar</button>
-                        `;
-                        const marker = L.marker([request.restaurante.latitude, request.restaurante.longitude], { icon: iconPending })
-                            .addTo(map)
-                            .bindPopup(popupContent);
-                        markers[request.id] = { marker, accepted: false };
-                    }
-                });
-            } else {
-                console.error('Respuesta no es un arreglo:', data);
-            }
-        })
-        .catch(error => console.error('Error fetching requests:', error));
-    
+        // Escuchar el evento 'actualizarMapa' del servidor
+        socket.on('actualizarMapa', (data) => {
+            // Limpiar los marcadores actuales
+            Object.values(markers).forEach(({ marker }) => map.removeLayer(marker));
+            Object.keys(markers).forEach(id => delete markers[id]);
+
+            // Volver a cargar las solicitudes pendientes en el mapa
+            cargarSolicitudesPendientes();
+        });
+
         // Acepta la recolección y actualiza el marcador en el mapa
         async function confirmarAceptacion(id) {
             try {
@@ -162,36 +185,24 @@
         }
     
         function actualizarContadorNotificaciones() {
-            fetch('/notificaciones-no-leidas', { method: 'GET', credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                const numNotificaciones = data.cantidad;
-                const contadorNotificaciones = document.getElementById('contadorNotificaciones');
-                contadorNotificaciones.style.display = numNotificaciones > 0 ? 'inline' : 'none';
-                contadorNotificaciones.textContent = numNotificaciones;
-            });
+            fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline';
+                    } else {
+                        contadorNotificaciones.style.display = 'none';
+                    }
+                });
         }
     
         actualizarContadorNotificaciones();
-    
-        // Escuchar el evento 'solicitudAceptada' desde el servidor
-        socket.on('solicitudAceptada', (data) => {
-            const { solicitudId } = data;
-    
-            // Verifica si existe el marcador con esa solicitudId
-            if (markers[solicitudId]) {
-                markers[solicitudId].marker.setIcon(iconAccepted);
-                const popup = markers[solicitudId].marker.getPopup();
-                popup.setContent(`<div class="accepted-popup">Solicitud aceptada</div>`);
-                markers[solicitudId].marker.bindPopup(popup).openPopup();
-    
-                // Después de 3 segundos, elimina el marcador
-                setTimeout(() => {
-                    map.removeLayer(markers[solicitudId].marker);
-                    delete markers[solicitudId];
-                }, 3000);
-            }
-        });
     </script>    
     <!-- Footer -->
     <footer>
@@ -204,5 +215,6 @@
     </footer>
 </body>
 </html>
+
 
 
