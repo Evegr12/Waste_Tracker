@@ -50,13 +50,14 @@
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
         });
-        socket.on('notificacionUsuario', (data) => {
-                const { mensaje } = data;
-                mostrarMensajeEmergente(mensaje);
-                actualizarContadorNotificaciones();
-            });
 
-        document.addEventListener("DOMContentLoaded", () => {
+        socket.on('notificacionUsuario', (data) => {
+            const { mensaje } = data;
+            mostrarMensajeEmergente(mensaje);
+            actualizarContadorNotificaciones();
+        });
+
+        document.addEventListener("DOMContentLoaded", async () => {
             const contadorElement = document.getElementById('contadorNotificaciones');
 
             function mostrarMensajeTemporal(mensaje, duracion) {
@@ -69,8 +70,34 @@
                 }, duracion);
             }
 
-            // Emitir evento para obtener la última recolección sin calificar
-            const restauranteId = "RESTAURANTE_ID_AQUI";  // Reemplaza con el ID correcto
+            // Función para obtener el restauranteId desde el backend
+            async function obtenerRestauranteId() {
+                try {
+                    const response = await fetch('/restaurante-info', {
+                        method: 'GET',
+                        credentials: 'include' // Para incluir cookies si es necesario
+                    });
+                    const data = await response.json();
+                    
+                    if (data && data.id) {
+                        return data.id; // Devuelve el ID del restaurante
+                    } else {
+                        console.error('No se encontró el ID del restaurante.');
+                        return null;
+                    }
+                } catch (error) {
+                    console.error('Error al obtener el ID del restaurante:', error);
+                    return null;
+                }
+            }
+
+            // Obtener el restauranteId antes de emitir el evento del socket
+            const restauranteId = await obtenerRestauranteId();
+            if (!restauranteId) {
+                console.error("No se pudo obtener el restauranteId. Asegúrate de que el usuario esté autenticado.");
+                return; // Salir si no se pudo obtener el restauranteId
+            }
+
             socket.emit('obtenerUltimaRecoleccionSinCalificar', { restauranteId });
 
             // Escuchar la respuesta con la última recolección sin calificar

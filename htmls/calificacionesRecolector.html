@@ -27,19 +27,16 @@
         <div class="rating-card">
             <h3>Mis calificaciones</h3>
             <div class="user-info">
-                <span class="user-icon">&#128100;</span> <!-- Icono de usuario -->
+                <span class="user-icon">&#128100;</span>
                 <span class="user-name" id="userName">Nombre del recolector</span>
             </div>
             <div class="rating-summary">
                 <h2 id="averageRating">0</h2>
-                <div class="stars" id="starsContainer">
-                    &#9733;&#9733;&#9733;&#9733;&#9734; <!-- Estrellas dinámicas -->
-                </div>
+                <div class="stars" id="starsContainer">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
                 <p id="totalRatings">0 calificaciones</p>
             </div>
         
             <div class="rating-breakdown">
-                <!-- Barras de calificación -->
                 <div class="rating-bar">
                     <span>5 </span>
                     <div class="bar">
@@ -78,8 +75,7 @@
             </div>
         </div> 
         <h3 class="titulo-calificaciones">Calificación de restaurante anónimo</h3>
-        <div id="rating-container"><p id="fechaCalificacion"></p>
-        </div> <!-- Contenedor donde aparecerán las calificaciones -->
+        <div id="rating-container"><p id="fechaCalificacion"></p></div>
     </main>
 
     <footer>
@@ -95,10 +91,10 @@
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
         const socket = io();
-        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+        const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*=\s*([^;]*).*$)|^.*$/, "$1");
 
         if (!token) {
-            console.error('No se encontró el token JWT.');
+            mostrarMensajeEmergente('No se encontró el token JWT');
         }
 
         const decodedToken = jwt_decode(token);
@@ -118,112 +114,117 @@
             const { mensaje } = data;
             mostrarMensajeEmergente(mensaje);
             actualizarContadorNotificaciones();
-        }); 
+        });
+
+        function mostrarMensajeEmergente(mensaje) {
+            const mensajeDiv = document.createElement('div');
+            mensajeDiv.className = 'mensaje-emergente';
+            mensajeDiv.textContent = mensaje;
+            document.body.appendChild(mensajeDiv);
+
+            setTimeout(() => {
+                mensajeDiv.remove();
+            }, 3000);
+        }
     </script>
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
-            const contadorElement = document.getElementById('contadorNotificaciones'); // Contador de notificaciones
-            const userNameElement = document.getElementById('userName'); // Nombre del recolector
-            const recolectorId = localStorage.getItem('recolector_id');
+            const contadorElement = document.getElementById('contadorNotificaciones');
+            const userNameElement = document.getElementById('userName');
 
-            if (!recolectorId) {
-                alert('No se encontró el ID del recolector. Por favor, inicie sesión nuevamente.');
-                window.location.href = 'login.html';
-                return;
-            }
-
-            // Solicitar calificaciones del recolector
-            socket.emit('obtenerCalificacionesRecolector', { recolectorId });
-
-            // Escuchar el evento con las calificaciones
-            socket.on('calificacionesRecolector', (data) => {
-                const { calificaciones, nombre } = data;
-                userNameElement.textContent = nombre || "Nombre del recolector";
-
-                const totalRatings = calificaciones.length;
-                const sumRatings = calificaciones.reduce((sum, calificacion) => sum + calificacion.calificacion, 0);
-                const averageRating = (sumRatings / totalRatings).toFixed(1);
-
-                // Mostrar promedio de calificaciones
-                document.getElementById('averageRating').textContent = averageRating;
-                document.getElementById('totalRatings').textContent = `${totalRatings} calificaciones`;
-
-                // Calcular y actualizar las barras de calificación
-                const ratingCounts = {
-                    5: calificaciones.filter(c => c.calificacion === 5).length,
-                    4: calificaciones.filter(c => c.calificacion === 4).length,
-                    3: calificaciones.filter(c => c.calificacion === 3).length,
-                    2: calificaciones.filter(c => c.calificacion === 2).length,
-                    1: calificaciones.filter(c => c.calificacion === 1).length
-                };
-
-                document.getElementById('fiveStarBar').style.width = `${(ratingCounts[5] / totalRatings) * 100}%`;
-                document.getElementById('fourStarBar').style.width = `${(ratingCounts[4] / totalRatings) * 100}%`;
-                document.getElementById('threeStarBar').style.width = `${(ratingCounts[3] / totalRatings) * 100}%`;
-                document.getElementById('twoStarBar').style.width = `${(ratingCounts[2] / totalRatings) * 100}%`;
-                document.getElementById('oneStarBar').style.width = `${(ratingCounts[1] / totalRatings) * 100}%`;
-
-                document.getElementById('fiveStarCount').textContent = ratingCounts[5];
-                document.getElementById('fourStarCount').textContent = ratingCounts[4];
-                document.getElementById('threeStarCount').textContent = ratingCounts[3];
-                document.getElementById('twoStarCount').textContent = ratingCounts[2];
-                document.getElementById('oneStarCount').textContent = ratingCounts[1];
-
-                // Mostrar estrellas según el promedio
-                const starsContainer = document.getElementById('starsContainer');
-                starsContainer.innerHTML = '&#9733;'.repeat(Math.round(averageRating)) + '&#9734;'.repeat(5 - Math.round(averageRating));
-
-                // Mostrar últimas 5 calificaciones
-                const ratingContainer = document.getElementById("rating-container");
-                const ultimasCalificaciones = calificaciones.slice(0, 5);
-
-                if (ultimasCalificaciones.length > 0) {
-                    let calificacionesHTML = '';
-
-                    ultimasCalificaciones.forEach(calificacion => {
-                        const fecha = new Date(calificacion.fechaCalificacion).toLocaleDateString('es-ES');
-                        calificacionesHTML += `
-                            <div class="calificacion-card">
-                                <div class="rating">
-                                    ${'&#9733;'.repeat(calificacion.calificacion)}
-                                    ${'&#9734;'.repeat(5 - calificacion.calificacion)}
-                                </div>
-                                <p>${calificacion.comentario || ' '}</p>
-                                <p>Fecha: ${fecha}</p>
-                            </div>`;
-                    });
-
-                    ratingContainer.innerHTML = calificacionesHTML;
-                } else {
-                    ratingContainer.innerHTML = '<p>No tienes calificaciones disponibles.</p>';
-                }
-            });
-        });
-
-        function actualizarContadorNotificaciones() {
-                // Obtiene las notificaciones no leídas del servidor
-                fetch('/notificaciones-no-leidas', {
+            try {
+                // Fetch recolectorId from the server
+                const recolectorId = await fetch(`/obtener-recolector-id/${usuarioId}`, {
                     method: 'GET',
                     credentials: 'include'
                 })
                 .then(response => response.json())
                 .then(data => {
-                    const numNotificaciones = data.cantidad;
-
-                    if (numNotificaciones > 0) {
-                        contadorNotificaciones.textContent = numNotificaciones;
-                        contadorNotificaciones.style.display = 'inline';
+                    if (data.success) {
+                        return data.recolectorId;
                     } else {
-                        contadorNotificaciones.style.display = 'none';
+                        throw new Error(data.message || 'Error al obtener el ID del recolector');
                     }
                 });
+
+                if (!recolectorId) return;
+
+                // Request recolector ratings
+                socket.emit('obtenerCalificacionesRecolector', { recolectorId });
+
+                socket.on('calificacionesRecolector', (data) => {
+                    if (!data.success) {
+                        mostrarMensajeEmergente(data.message);
+                        document.getElementById("rating-container").innerHTML = `<p>${data.message}</p>`;
+                        return;
+                    }
+
+                    const { calificaciones, nombre } = data;
+                    userNameElement.textContent = nombre || ' ';
+
+                    const totalRatings = calificaciones.length;
+                    const sumRatings = calificaciones.reduce((sum, c) => sum + c.calificacion, 0);
+                    const averageRating = totalRatings > 0 ? (sumRatings / totalRatings).toFixed(1) : '0';
+
+                    document.getElementById('averageRating').textContent = averageRating;
+                    document.getElementById('totalRatings').textContent = `${totalRatings} calificaciones`;
+
+                    const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+                    calificaciones.forEach(c => ratingCounts[c.calificacion]++);
+
+                    document.getElementById('fiveStarBar').style.width = `${(ratingCounts[5] / totalRatings) * 100}%`;
+                    document.getElementById('fourStarBar').style.width = `${(ratingCounts[4] / totalRatings) * 100}%`;
+                    document.getElementById('threeStarBar').style.width = `${(ratingCounts[3] / totalRatings) * 100}%`;
+                    document.getElementById('twoStarBar').style.width = `${(ratingCounts[2] / totalRatings) * 100}%`;
+                    document.getElementById('oneStarBar').style.width = `${(ratingCounts[1] / totalRatings) * 100}%`;
+
+                    document.getElementById('fiveStarCount').textContent = ratingCounts[5];
+                    document.getElementById('fourStarCount').textContent = ratingCounts[4];
+                    document.getElementById('threeStarCount').textContent = ratingCounts[3];
+                    document.getElementById('twoStarCount').textContent = ratingCounts[2];
+                    document.getElementById('oneStarCount').textContent = ratingCounts[1];
+
+                    const starsContainer = document.getElementById('starsContainer');
+                    starsContainer.innerHTML = '&#9733;'.repeat(Math.round(averageRating)) + '&#9734;'.repeat(5 - Math.round(averageRating));
+
+                    const ratingContainer = document.getElementById("rating-container");
+                    const ultimasCalificaciones = calificaciones.slice(0, 5).map(c => `
+                        <div class="calificacion-card">
+                            <div class="rating">${'&#9733;'.repeat(c.calificacion)}${'&#9734;'.repeat(5 - c.calificacion)}</div>
+                            <p>${c.comentario}</p>
+                            <p>Fecha: ${new Date(c.fechaCalificacion).toLocaleDateString('es-ES')}</p>
+                        </div>
+                    `).join('');
+
+                    ratingContainer.innerHTML = ultimasCalificaciones || '<p>No tienes calificaciones disponibles.</p>';
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensajeEmergente('Error en la carga de datos');
             }
+        });
 
-            // Llamar a la función para actualizar la campana cuando se carga la página
-            actualizarContadorNotificaciones();
+        function actualizarContadorNotificaciones() {
+            fetch('/notificaciones-no-leidas', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const numNotificaciones = data.cantidad;
+                const contadorElement = document.getElementById('contadorNotificaciones');
 
+                if (numNotificaciones > 0) {
+                    contadorElement.textContent = numNotificaciones;
+                    contadorElement.style.display = 'inline';
+                } else {
+                    contadorElement.style.display = 'none';
+                }
+            });
+        }
+
+        actualizarContadorNotificaciones();
     </script>
 </body>
 </html>
-
 
