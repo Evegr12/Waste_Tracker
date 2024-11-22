@@ -38,13 +38,15 @@
         
             <div class="rating-breakdown">
                 <div class="rating-bar">
-                    <span>5 </span>
+                    <div class="stars" id="starsContainer"> &#9733; </div>
+                    <span> 5</span>
                     <div class="bar">
                         <div class="filled-bar" id="fiveStarBar"></div>
                     </div>
                     <span class="rating-count" id="fiveStarCount">0</span>
                 </div>
                 <div class="rating-bar">
+                    <div class="stars" id="starsContainer"> &#9733; </div>
                     <span>4 </span>
                     <div class="bar">
                         <div class="filled-bar" id="fourStarBar"></div>
@@ -52,6 +54,7 @@
                     <span class="rating-count" id="fourStarCount">0</span>
                 </div>
                 <div class="rating-bar">
+                    <div class="stars" id="starsContainer"> &#9733; </div>
                     <span>3 </span>
                     <div class="bar">
                         <div class="filled-bar" id="threeStarBar"></div>
@@ -59,6 +62,7 @@
                     <span class="rating-count" id="threeStarCount">0</span>
                 </div>
                 <div class="rating-bar">
+                    <div class="stars" id="starsContainer"> &#9733; </div>
                     <span>2 </span>
                     <div class="bar">
                         <div class="filled-bar" id="twoStarBar"></div>
@@ -66,6 +70,7 @@
                     <span class="rating-count" id="twoStarCount">0</span>
                 </div>
                 <div class="rating-bar">
+                    <div class="stars" id="starsContainer"> &#9733; </div>
                     <span>1 </span>
                     <div class="bar">
                         <div class="filled-bar" id="oneStarBar"></div>
@@ -126,31 +131,28 @@
                 mensajeDiv.remove();
             }, 3000);
         }
-    </script>
-    <script>
+
         document.addEventListener("DOMContentLoaded", async () => {
             const contadorElement = document.getElementById('contadorNotificaciones');
             const userNameElement = document.getElementById('userName');
 
             try {
-                // Fetch recolectorId from the server
-                const recolectorId = await fetch(`/obtener-recolector-id/${usuarioId}`, {
+                // Obtener información del recolector desde el endpoint
+                const recolectorInfo = await fetch(`/recolector-info`, {
                     method: 'GET',
                     credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        return data.recolectorId;
-                    } else {
-                        throw new Error(data.message || 'Error al obtener el ID del recolector');
-                    }
-                });
+                }).then(response => response.json());
 
-                if (!recolectorId) return;
+                if (recolectorInfo.error) {
+                    mostrarMensajeEmergente(recolectorInfo.error);
+                    return;
+                }
 
-                // Request recolector ratings
-                socket.emit('obtenerCalificacionesRecolector', { recolectorId });
+                const { nombre } = recolectorInfo;
+                userNameElement.textContent = nombre || 'Recolector';
+
+                // Solicitar calificaciones desde el socket
+                socket.emit('obtenerCalificacionesRecolector', { recolectorId: recolectorInfo.id });
 
                 socket.on('calificacionesRecolector', (data) => {
                     if (!data.success) {
@@ -159,8 +161,7 @@
                         return;
                     }
 
-                    const { calificaciones, nombre } = data;
-                    userNameElement.textContent = nombre || ' ';
+                    const { calificaciones } = data;
 
                     const totalRatings = calificaciones.length;
                     const sumRatings = calificaciones.reduce((sum, c) => sum + c.calificacion, 0);
@@ -192,7 +193,7 @@
                         <div class="calificacion-card">
                             <div class="rating">${'&#9733;'.repeat(c.calificacion)}${'&#9734;'.repeat(5 - c.calificacion)}</div>
                             <p>${c.comentario}</p>
-                            <p>Fecha: ${new Date(c.fechaCalificacion).toLocaleDateString('es-ES')}</p>
+                            <p>${new Date(c.fechaCalificacion).toLocaleDateString('es-ES')}</p>
                         </div>
                     `).join('');
 

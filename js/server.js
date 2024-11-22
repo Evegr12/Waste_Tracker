@@ -670,31 +670,36 @@ app.post('/registroRecolector', upload.none(), async (req, res) => {
   }
 });
 
+
+// Endpoint para subir la foto de perfil
 app.post('/upload-photo', upload.single('fotoPerfil'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No se subió ningún archivo.' });
     }
 
-    const imageUrl = `../uploads/${req.file.filename}`;
+    const imageUrl = `/uploads/${req.file.filename}`; // URL relativa para servir la imagen
     const userId = req.body.usuarios_id;
 
+    // Buscar el usuario en la base de datos
     const usuario = await Usuario.findByPk(userId);
     if (!usuario) {
       return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
     }
 
+    // Actualizar la URL de la foto de perfil
     usuario.fotoPerfil = imageUrl;
     await usuario.save();
 
-    // Emitir la nueva URL de imagen al cliente
-    io.to(req.socketId).emit('actualizarFotoPerfil', { imageUrl });
-
-    // Respuesta en JSON para compatibilidad
-    res.json({ success: true, message: 'Foto de perfil subida con éxito.', imageUrl });
+    // Respuesta JSON con la nueva URL
+    res.json({
+      success: true,
+      message: 'Foto de perfil subida con éxito.',
+      imageUrl
+    });
   } catch (error) {
     console.error('Error al guardar la URL de la imagen en la base de datos:', error);
-    res.status(500).json({ success: false, message: 'Error al guardar la imagen.' });
+    res.status(500).json({ success: false, message: 'Error al guardar la imagen en el servidor.' });
   }
 });
 
@@ -731,24 +736,40 @@ async function obtenerCoordenadas(direccion) {
   }
 }
 
-app.get('/restaurante-info', verificarToken, async (req, res) => {
+app.get('/recolector-info', verificarToken, async (req, res) => {
   try {
+      console.log('ID del usuario autenticado:', req.user.id);
+
+      // Buscar el usuario y su recolector asociado
       const usuario = await Usuario.findByPk(req.user.id, {
-          include: [{ model: Restaurante }] // Asegúrate de que la relación esté bien definida
+          include: [{ model: Recolector, as: 'recolectore' }] // Usando el alias 'recolectore'
       });
 
-      if (!usuario || !usuario.restaurante) {
-          return res.status(404).json({ error: 'Restaurante no encontrado para este usuario' });
+      if (!usuario) {
+          console.error(`Usuario no encontrado con ID ${req.user.id}`);
+          return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      console.log('Usuario encontrado:', usuario);
+
+      if (!usuario.recolectore) {
+          console.error(`Recolector no encontrado para el usuario con ID ${req.user.id}`);
+          return res.status(404).json({ error: 'Recolector no encontrado para este usuario' });
+      }
+
+      console.log('Recolector asociado encontrado:', usuario.recolectore);
+
+      // Acceder correctamente a los datos de recolector
+      const recolector = usuario.recolectore.dataValues;
+
+      // Devuelve los datos del recolector
       res.json({
-          id: usuario.restaurante.id,
-          nombre: usuario.restaurante.nombre,
-          direccion: usuario.restaurante.direccion,
-          // Otros campos que desees incluir
+          id: recolector.id,
+          nombre: usuario.nombre, // Nombre del usuario (recolector)
+          fotoPerfil: usuario.fotoPerfil || '../images/default-profile.png',
       });
   } catch (error) {
-      console.error('Error al obtener la información del restaurante:', error);
+      console.error('Error al obtener la información del recolector:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -1306,10 +1327,6 @@ app.get('/recolecciones-finalizadas-restaurante', async (req, res) => {
         estado: 'finalizada'
       }
     });
-
-    // Emitir el número de recolecciones al cliente que hizo la solicitud
-    io.to(req.socketId).emit('recoleccionesFinalizadas', { recoleccionesFinalizadas });
-
     // Respuesta original para compatibilidad
     res.json({ recoleccionesFinalizadas });
   } catch (error) {

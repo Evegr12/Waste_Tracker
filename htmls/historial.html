@@ -90,6 +90,12 @@
             console.log(`Socket desconectado: ${socket.id}`);
         });
 
+        socket.on('notificacionUsuario', (data) => {
+            const { mensaje } = data;
+            mostrarMensajeEmergente(mensaje);
+            actualizarContadorNotificaciones();
+        });
+
         // Recibir historial de recolecciones del servidor
         socket.on('historialRecolecciones', (data) => {
             const historialContainer = document.getElementById('historial-container');

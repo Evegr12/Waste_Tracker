@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -40,18 +40,19 @@
             <a href="/htmls/perfilRestaurante.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
         </nav>
     </header>
+
     <div class="container">
         <div class="header">
             <h2>Mi restaurante</h2>
         </div>
         <div class="restaurant-info">
             <label for="cargar-foto-perfil">
-                <img src="../images/kingfish.png" alt="King Fish" id="foto-perfil">
+                <img src="../images/default-profile.png" alt="Foto de perfil" id="foto-perfil">
             </label>
             <input type="file" id="cargar-foto-perfil-res" style="display: none;" accept="image/*">
             <a href="#"><img src="../images/camara.png" alt="Actualizar foto de perfil" class="cargar-foto-perfil" onclick="document.getElementById('cargar-foto-perfil-res').click();"></a><br><br>
             <div id="mensajeTemporal" style="display: none; color: green; font-weight: bold;"></div>
-            <div class="restaurant-name">Restaurante</div>
+            <div class="restaurant-name" id="restaurantName">Cargando...</div>
         </div>
         <div class="collection-info">
             <span>0</span> Recolecciones
@@ -75,15 +76,12 @@
     <script>
         const socket = io();
         const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-
         if (!token) {
-            console.error('No se encontró el token JWT. Redirigiendo a login.');
-            window.location.href = '/htmls/login.html';
+            console.error('No se encontró el token JWT.');
         }
 
         const decodedToken = jwt_decode(token);
         const usuarioId = decodedToken.id;
-        console.log('ID del usuario autenticado:', usuarioId);
 
         socket.on('connect', () => {
             socket.emit('registrarUsuario', usuarioId);
@@ -99,9 +97,91 @@
             mostrarMensajeEmergente(mensaje);
             actualizarContadorNotificaciones();
         });
-    </script>
 
-    <script>
+        // Función para obtener la información del restaurante y actualizar el frontend
+        function obtenerInformacionRestaurante() {
+            fetch('/restaurante-info', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const restauranteId = data.id;
+                const restaurantName = data.nombre;
+                const fotoPerfilUrl = data.fotoPerfil;
+
+                if (restauranteId) {
+                    actualizarContadorRecolecciones(restauranteId);
+                } else {
+                    console.error('No se encontró el ID del restaurante');
+                }
+
+                if (restaurantName) {
+                    document.getElementById('restaurantName').textContent = restaurantName;
+                }
+
+                if (fotoPerfilUrl) {
+                    document.getElementById('foto-perfil').src = `${fotoPerfilUrl}?t=${Date.now()}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener la información del restaurante:', error);
+            });
+        }
+
+        // Función para actualizar el contador de recolecciones
+        function actualizarContadorRecolecciones(restauranteId) {
+            fetch(`/recolecciones-finalizadas-restaurante?restauranteId=${restauranteId}`, {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const recoleccionesFinalizadas = data.recoleccionesFinalizadas;
+                document.querySelector('.collection-info span').textContent = recoleccionesFinalizadas || 0;
+            })
+            .catch(error => {
+                console.error('Error al obtener el número de recolecciones finalizadas:', error);
+            });
+        }
+
+        // Función para manejar la subida de fotos
+        const cargarFotoPerfil = document.getElementById('cargar-foto-perfil-res');
+        cargarFotoPerfil.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file && file.type.startsWith('image/')) {
+                if (file.size > 2 * 1024 * 1024) {
+                    mostrarMensajeTemporal('El archivo es demasiado grande. Selecciona una imagen menor a 2 MB.', 3000);
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('fotoPerfil', file);
+                formData.append('usuarios_id', usuarioId);
+
+                fetch('/upload-photo', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('foto-perfil').src = `${data.imageUrl}?t=${Date.now()}`;
+                        mostrarMensajeTemporal('Foto de perfil actualizada con éxito', 3000);
+                    } else {
+                        alert('Error al subir la foto de perfil.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al enviar la imagen:', error);
+                });
+            } else {
+                mostrarMensajeTemporal('El archivo seleccionado no es una imagen válida.', 3000);
+            }
+        });
+
+        // Mostrar mensaje temporal
         function mostrarMensajeTemporal(mensaje, duracion) {
             const mensajeTemporal = document.getElementById('mensajeTemporal');
             mensajeTemporal.textContent = mensaje;
@@ -112,70 +192,29 @@
             }, duracion);
         }
 
-        const cargarFotoPerfil = document.getElementById('cargar-foto-perfil-res');
-        cargarFotoPerfil.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file && file.type.startsWith('image/')) {
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('El archivo es demasiado grande. Selecciona una imagen de menos de 2MB.');
-                    return;
-                }
+        // Llama a obtener la información del restaurante al cargar la página
+        obtenerInformacionRestaurante();
 
-                const formData = new FormData();
-                formData.append('fotoPerfil', file);
-                formData.append('usuarios_id', usuarioId);
-
-                fetch('/upload-photo', {
-                    method: 'POST',
-                    body: formData
+        function actualizarContadorNotificaciones() {
+                fetch('/notificaciones-no-leidas', {
+                    method: 'GET',
+                    credentials: 'include'
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        mostrarMensajeTemporal('Foto de perfil actualizada', 3000);
-                        document.getElementById('foto-perfil').src = data.imageUrl;
+                    const numNotificaciones = data.cantidad;
+
+                    if (numNotificaciones > 0) {
+                        contadorNotificaciones.textContent = numNotificaciones;
+                        contadorNotificaciones.style.display = 'inline';
                     } else {
-                        alert('Error al subir la foto de perfil.');
+                        contadorNotificaciones.style.display = 'none';
                     }
-                })
-                .catch(error => {
-                    console.error('Error al enviar la imagen:', error);
                 });
-            } else {
-                alert('El archivo seleccionado no es una imagen válida.');
             }
-        });
 
-        // Solicitar el número de recolecciones finalizadas usando sockets
-        socket.emit('obtenerRecoleccionesFinalizadas', { restauranteId: usuarioId });
-
-        // Escuchar el evento para recibir las recolecciones finalizadas
-        socket.on('recoleccionesFinalizadas', (data) => {
-            document.querySelector('.collection-info span').textContent = data.recoleccionesFinalizadas || 0;
-        });
+            actualizarContadorNotificaciones();
     </script>
-    <script>
-        function actualizarContadorNotificaciones() {
-            fetch('/notificaciones-no-leidas', {
-                method: 'GET',
-                credentials: 'include'
-            })
-            .then(response => response.json())
-            .then(data => {
-                const numNotificaciones = data.cantidad;
-
-                if (numNotificaciones > 0) {
-                    contadorNotificaciones.textContent = numNotificaciones;
-                    contadorNotificaciones.style.display = 'inline';
-                } else {
-                    contadorNotificaciones.style.display = 'none';
-                }
-            });
-        }
-
-        actualizarContadorNotificaciones();
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/typewriter-effect@latest/dist/core.js"></script>
     <script src="../js/login.js"></script>
 </body>
 </html>
