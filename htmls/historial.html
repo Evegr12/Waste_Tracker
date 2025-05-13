@@ -92,7 +92,6 @@
 
         socket.on('notificacionUsuario', (data) => {
             const { mensaje } = data;
-            mostrarMensajeEmergente(mensaje);
             actualizarContadorNotificaciones();
         });
 

@@ -235,9 +235,20 @@ const NotificacionConsejo = sequelize.define('notificaciones_consejos', {
     autoIncrement: true,
     primaryKey: true
   },
+  usuarios_id: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: Usuario,
+      key: 'id'
+    }
+  },
   texto: {
-    type: DataTypes.STRING(150),
+    type: DataTypes.STRING(350),
     allowNull: false
+  },
+  leida: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   tableName: 'notificaciones_consejos',
@@ -399,10 +410,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Recibe y guarda la calificación
+// Recibe y guarda la calificación
 socket.on('enviarCalificacion', async ({ recoleccionId, calificacion, comentario }) => {
   try {
-      const recoleccion = await Recoleccion.findByPk(recoleccionId);
+      const recoleccion = await Recoleccion.findByPk(recoleccionId, {
+          include: [
+              {
+                  model: Recolector,
+                  include: {
+                      model: Usuario, // Se asume que los recolectores tienen un usuario relacionado
+                      attributes: ['id', 'nombre']
+                  }
+              }
+          ]
+      });
 
       if (!recoleccion) {
           socket.emit('error', { message: 'Recolección no encontrada' });
@@ -412,16 +433,23 @@ socket.on('enviarCalificacion', async ({ recoleccionId, calificacion, comentario
       // Guardar calificación, comentario y fecha
       recoleccion.calificacion = calificacion;
       recoleccion.comentario = comentario || '';
-      recoleccion.fecha_calificacion = new Date();  // Guardar la fecha actual
+      recoleccion.fecha_calificacion = new Date(); // Guardar la fecha actual
       await recoleccion.save();
 
       // Emitir evento de éxito al cliente actual
       socket.emit('calificacionEnviada');
 
-      // Enviar notificación a otros usuarios si aplica
-      const mensaje = '¡Gracias por calificar el servicio!';
-      socket.broadcast.emit('notificacionUsuario', { mensaje });
+      // Enviar notificación al recolector correspondiente
+      const recolectorId = recoleccion.Recolector?.Usuario?.id;
+      if (recolectorId) {
+          const mensaje = `Has recibido una nueva calificación: ${calificacion} estrellas.`;
+          // Emitir notificación al socket del recolector (si está conectado)
+          socket.to(`usuario-${recolectorId}`).emit('notificacionUsuario', { mensaje });
 
+          console.log(`Notificación enviada al recolector con ID: ${recolectorId}`);
+      } else {
+          console.error('No se encontró el ID del recolector para enviar la notificación.');
+      }
   } catch (error) {
       console.error('Error al guardar la calificación:', error);
       socket.emit('error', { message: 'Error al guardar la calificación' });
@@ -735,6 +763,27 @@ async function obtenerCoordenadas(direccion) {
       return { lat: null, lon: null };
   }
 }
+
+app.get('/restaurante-info', verificarToken, async (req, res) => {
+  try {
+    console.log('ID del usuario autenticado:', req.user.id);
+    const usuario = await Usuario.findByPk(req.user.id, {
+      include: [{ model: Restaurante }]
+    });
+    if (!usuario || !usuario.restaurante) {
+      return res.status(404).json({ error: 'Restaurante no encontrado para este usuario' });
+    }
+    res.json({
+      id: usuario.restaurante.id,
+      nombre: usuario.restaurante.nombre,
+      direccion: usuario.restaurante.direccion,
+      fotoPerfil: usuario.fotoPerfil || '../images/default-profile.png'
+    });
+  } catch (error) {
+    console.error('Error al obtener la información del restaurante:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
 
 app.get('/recolector-info', verificarToken, async (req, res) => {
   try {
@@ -1487,7 +1536,7 @@ app.get('/notificaciones-restaurante', verificarToken, async (req, res) => {
     // Buscar las notificaciones del usuario (restaurante) ordenadas por fecha
     const notificaciones = await Notificacion.findAll({
       where: { usuarios_id: usuarioId },  // Filtrar por el ID del usuario
-      order: [['fecha', 'DESC']]  // Ordenar por fecha de manera descendente
+      order: [['fecha', 'ASC']]  // Ordenar por fecha de manera descendente
     });
 
     // Enviar las notificaciones como respuesta
@@ -1515,6 +1564,23 @@ app.get('/notificacion-consejo', async (req, res) => {
     res.status(500).json({ error: 'Error en el servidor' });
   }
 });
+
+app.get('/notificaciones-consejos', verificarToken, async (req, res) => {
+  try {
+    const usuarioId = req.user.id;
+
+    const consejos = await NotificacionConsejo.findAll({
+      where: { usuarios_id: usuarioId },
+      order: [['id', 'DESC']] // Ordenar del más nuevo al más antiguo
+    });
+
+    res.json(consejos);
+  } catch (error) {
+    console.error('Error al obtener los consejos:', error);
+    res.status(500).json({ error: 'Error al obtener los consejos' });
+  }
+});
+
 
 app.get('/usuarios', async (req, res) => {
   try {

@@ -65,19 +65,12 @@
 
             if (!token) {
                 console.error('No se encontró el token JWT.');
-                return;
             }
 
             // Decodificar el token JWT para obtener el usuarioId
             const decodedToken = jwt_decode (token);
             const usuarioId = decodedToken.id;  // Asegúrate de que el token tiene el campo 'id'
             console.log('ID del usuario autenticado:', usuarioId);
-
-            socket.on('connect', () =>{
-                 // Registrar al usuario en el servidor con su usuario_id
-                socket.emit('registrarUsuario', usuarioId);
-                console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
-            })
 
             // Manejar la reconexión automática del socket
             socket.on('connect', () => {
@@ -94,7 +87,6 @@
 
             socket.on('notificacionUsuario', (data) => {
                 const { mensaje } = data;
-                mostrarMensajeEmergente(mensaje);
                 actualizarContadorNotificaciones();
             });
 

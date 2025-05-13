@@ -160,7 +160,7 @@
 
             socket.on('calificacionEnviada', () => {
                 mostrarMensajeTemporal('¡Calificación enviada exitosamente!', 3000);
-                document.getElementById("rating-container").innerHTML = `<p>No hay más recolecciones por calificar.</p>`;
+                document.getElementById("rating-container").innerHTML = `<p></p>`;
             });
 
             function actualizarContadorNotificaciones() {

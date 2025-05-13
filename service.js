@@ -1,4 +1,7 @@
-/*const CACHE_NAME = 'waste-tracker-cache-v1.2.140';
+const CACHE_NAME = 'waste-tracker-cache-v1.2.140';
+const MAP_TILE_CACHE = 'map-tiles-cache';
+const MAX_TILES = 1000;
+
 const urlsToCache = [
     '/',
     '/htmls/login.html',
@@ -64,8 +67,7 @@ const urlsToCache = [
 // Instalación del service worker
 self.addEventListener('install', function(event) {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-        .then(function(cache) {
+        caches.open(CACHE_NAME).then(function(cache) {
             console.log('Archivos cacheados correctamente');
             return cache.addAll(urlsToCache);
         })
@@ -74,9 +76,46 @@ self.addEventListener('install', function(event) {
 
 // Interceptar solicitudes de red
 self.addEventListener('fetch', function(event) {
+    const requestUrl = new URL(event.request.url);
+
+    // Interceptar solicitudes de tiles de mapas externos
+    if (
+        requestUrl.origin.includes('tile.openstreetmap.org') ||
+        requestUrl.origin.includes('api.mapbox.com') ||
+        requestUrl.origin.includes('tiles.mapbox.com')
+    ) {
+        event.respondWith(
+            caches.open(MAP_TILE_CACHE).then(async function(cache) {
+                const cachedResponse = await cache.match(event.request);
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+
+                try {
+                    const networkResponse = await fetch(event.request);
+                    if (networkResponse.status === 200) {
+                        await cache.put(event.request, networkResponse.clone());
+
+                        // Limitar la cantidad de tiles en caché
+                        const keys = await cache.keys();
+                        if (keys.length > MAX_TILES) {
+                            const toDelete = keys.slice(0, keys.length - MAX_TILES);
+                            await Promise.all(toDelete.map(key => cache.delete(key)));
+                        }
+                    }
+                    return networkResponse;
+                } catch (error) {
+                    console.warn('Error al obtener el tile:', error);
+                    return new Response(null, { status: 504, statusText: 'Gateway Timeout' });
+                }
+            })
+        );
+        return;
+    }
+
+    // Resto de archivos locales
     event.respondWith(
-        caches.match(event.request)
-        .then(function(response) {
+        caches.match(event.request).then(function(response) {
             return response || fetch(event.request);
         })
     );
@@ -84,17 +123,16 @@ self.addEventListener('fetch', function(event) {
 
 // Activación del service worker
 self.addEventListener('activate', function(event) {
-    const cacheWhitelist = [CACHE_NAME];
+    const cacheWhitelist = [CACHE_NAME, MAP_TILE_CACHE];
     event.waitUntil(
         caches.keys().then(function(cacheNames) {
-        return Promise.all(
-            cacheNames.map(function(cacheName) {
-            if (cacheWhitelist.indexOf(cacheName) === -1) {
-                return caches.delete(cacheName);
-            }
-            })
-        );
+            return Promise.all(
+                cacheNames.map(function(cacheName) {
+                    if (!cacheWhitelist.includes(cacheName)) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
         })
     );
 });
-*/

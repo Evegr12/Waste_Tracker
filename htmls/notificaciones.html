@@ -56,7 +56,6 @@
 
             if (!token) {
                 console.error('No se encontró el token JWT.');
-                return;
             }
 
             // Decodificar el token JWT para obtener el usuarioId
@@ -70,15 +69,6 @@
                 console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
             })
 
-            // Manejar la reconexión automática del socket
-            socket.on('connect', () => {
-                if (usuarioId) {
-                    // Re-emitir el evento para registrar al usuario nuevamente
-                    socket.emit('registrarUsuario', usuarioId);
-                    console.log(`Usuario reconectado con ID ${usuarioId} y socket: ${socket.id}`);
-                }
-            });
-
             socket.on('disconnect', () => {
                 console.log(`Socket desconectado: ${socket.id}`);
             });
@@ -86,7 +76,7 @@
 
             const notificationList = document.getElementById('notificationsList');
             const LIMIT = 10; // Límite de notificaciones a mostrar
-            const intervaloConsejo = 10 * 60 * 1000; // 10 minutos en milisegundos
+            const intervaloConsejo = 1 * 60 * 1000; // 10 minutos en milisegundos
 
     
             // Recibir notificaciones en tiempo real para el restaurante
@@ -98,6 +88,9 @@
     
             // Función para mostrar una notificación
             function mostrarNotificacion(mensaje, fecha) {
+                const isConsejo = mensaje.startsWith("Consejo:") || mensaje.includes("empaque ecológico"); // opcional
+                const displayMensaje = isConsejo ? `<strong>Consejo:</strong> ${mensaje.replace(/^Consejo:\s*/i, '')}` : mensaje;
+
                 const notificationItem = document.createElement('div');
                 notificationItem.classList.add('notification');
                 notificationItem.innerHTML = `
@@ -106,7 +99,7 @@
                         <span class="date-time">${new Date(fecha).toLocaleString()}</span>
                     </div>
                 `;
-                notificationList.appendChild(notificationItem); // Insertar la notificación al principio de la lista
+                notificationList.append(notificationItem); // Insertar la notificación al principio de la lista
             }
     
             // Función para actualizar el contador de notificaciones

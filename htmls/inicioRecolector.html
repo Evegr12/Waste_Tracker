@@ -14,12 +14,18 @@
         </div>
         <nav>
             <div class="campana-notificaciones">
-                <a href="/htmls/notificacionesRecolector.html">
-                    <img src="../images/notificaciones.png" alt="Notificaciones">
-                    <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
-                </a>
+                <div class="tooltip">
+                    <a href="/htmls/notificacionesRecolector.html">
+                        <img src="../images/notificaciones.png" alt="Notificaciones">
+                        <span class="badge" id="contadorNotificaciones" style="display: none;"></span>
+                    </a>
+                    <span class="tooltiptext">Notificaciones</span>
+                </div>
             </div>
-            <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+            <div class="tooltip">
+                <a href="/htmls/perfilRecolector.html"><img src="../images/perfil-icon.png" alt="Perfil"></a>
+                <span class="tooltiptext">Perfil</span>
+            </div>
         </nav>
     </header>
     
@@ -37,11 +43,11 @@
             </div>
             <div class="tooltip">
                 <a href="/htmls/mapaRecolector.html"><img src="../images/ubicacion.png" alt="Mapa-solicitudes-pendientes"></a>
-                <span class="tooltiptext">Solicitudes enviadas</span>
+                <span class="tooltiptext">Solicitudes</span>
             </div>
             <div class="tooltip">
                 <a href="/htmls/ruta.html"><img class="mapa" src="../images/ubicacionesAceptadas.png" alt="Mapa-solicitudes-aceptadas"></a>
-                <span class="tooltiptext">Solicitudes aceptadas</span>
+                <span class="tooltiptext">Solicitudes pendientes</span>
             </div>
             <div class="tooltip">
                 <a href="/htmls/calificacionesRecolector.html"><img class="calificaciones" src="../images/califi-icon.png" alt="Calificar"></a>
@@ -54,20 +60,23 @@
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
         const socket = io();
-        const token = document.cookie.replace(/(?:(?:^|.*;\\s*)jwt\\s*\\=\\s*([^;]*).*$)|^.*$/, "$1");
+        const token = document.cookie.replace(/(?:(?:^|.*;\s*)jwt\s*=\s*([^;]*).*$)|^.*$/, "$1");
+        if (token) {
+            try {
+                const decodedToken = jwt_decode(token);
+                const usuarioId = decodedToken.id;
+                console.log('ID del usuario autenticado:', usuarioId);
 
-        if (!token) {
+                socket.on('connect', () => {
+                    socket.emit('registrarUsuario', usuarioId);
+                    console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
+                });
+            } catch (error) {
+                console.error('Error al decodificar el token JWT:', error);
+            }
+        } else {
             console.error('No se encontró el token JWT.');
         }
-
-        const decodedToken = jwt_decode(token);
-        const usuarioId = decodedToken.id;
-        console.log('ID del usuario autenticado:', usuarioId);
-
-        socket.on('connect', () => {
-            socket.emit('registrarUsuario', usuarioId);
-            console.log(`Usuario con ID ${usuarioId} registrado con socket: ${socket.id}`);
-        });
 
         socket.on('disconnect', () => {
             console.log(`Socket desconectado: ${socket.id}`);
